@@ -7,6 +7,7 @@
 - `index.html`: el sitio completo (no necesita compilación). Aviso 18+, portada con el panel de finales, lector con temas y tamaño de letra.
 - `cover.webp`: la portada de la página de inicio.
 - `game.js`: minijuego «Мост» (estilo dinosaurio de Chrome) al final del episodio 1. Natalia cruza el puente y se encuentra con Robert; las opciones del episodio aparecen al ganar (o al pulsar «Пропустить» tras dos intentos). Se recuerda en `localStorage` (`most:game1`).
+- `img/`: ilustraciones de los episodios en JPG (`01.jpg`, `03.jpg`, `04a.jpg`…). En el `.md` del episodio se ponen en un párrafo propio: `![texto alternativo](img/01.jpg)`.
 - `book.json`: título, descripción y lista de episodios. Los finales llevan `"ending": "tragic" | "neutral" | "happy" | "wedding"`.
 - `episodes/NN.md`: un archivo por episodio, en Markdown: Párrafos separados por una línea en blanco, `*cursiva*`, `**negrita**`, `***` para un cambio de escena. Las decisiones van al final en un bloque:
 

@@ -39,6 +39,8 @@ article h1{font-family:var(--display);font-weight:600;font-size:2em;line-height:
 article p{margin:0 0 1.1em}
 article hr{border:0;text-align:center;margin:1.8em 0}
 article hr::after{content:"⁂";color:var(--muted)}
+.ill{margin:1.6em 0}
+.ill img{display:block;width:100%;height:auto;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
 .choices{margin:40px 0 10px;display:flex;flex-direction:column;gap:12px}
 .choices .q{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:4px}
 .choices[hidden]{display:none}
@@ -101,6 +103,8 @@ function inline(s){
 function render(md){
   return md.replace(/\r/g, "").split(/\n\s*\n/).map(b => b.trim()).filter(Boolean).map(b => {
     if (/^(\*\s*){3,}$/.test(b)) return "<hr>";
+    const im = b.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
+    if (im) return `<figure class="ill"><img src="${esc(im[2])}" alt="${esc(im[1])}" loading="lazy" width="1536" height="1024"></figure>`;
     if (/^:::\s*choices/i.test(b)) {
       const rows = b.split("\n"), q = rows[0].replace(/^:::\s*choices\s*/i, "").trim();
       const items = rows.slice(1).map(r => r.trim().match(/^\[([^\]]+)\]\(([^)\s]+)\)$/)).filter(Boolean);
