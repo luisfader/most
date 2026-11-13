@@ -5,6 +5,7 @@
 ## Estructura
 
 - `index.html`: el sitio completo (no necesita compilación). Aviso 18+, portada con el panel de finales, lector con temas y tamaño de letra.
+- `cover.enc`: la portada, cifrada igual que los episodios. Se muestra en la página de inicio solo después de entrar con la contraseña.
 - `book.json`: título, descripción y lista de episodios. Los finales llevan `"ending": "tragic" | "neutral" | "happy" | "wedding"`.
 - `episodes/NN.enc`: un archivo por episodio, **cifrado** (ver «Contraseña»). El texto, una vez descifrado, es Markdown: Párrafos separados por una línea en blanco, `*cursiva*`, `**negrita**`, `***` para un cambio de escena. Las decisiones van al final en un bloque:
 
@@ -23,12 +24,12 @@ Para entrar hay que confirmar la edad y escribir la contraseña. La contraseña 
 Para editar un episodio (hace falta Node 20 o más nuevo):
 
 ```
-node tools/decrypt.mjs . <contraseña>     # crea episodes/NN.md
+node tools/decrypt.mjs . <contraseña>     # crea episodes/NN.md y cover.webp
 # editar los .md
-node tools/encrypt.mjs . <contraseña>     # vuelve a cifrar y borra los .md
+node tools/encrypt.mjs . <contraseña>     # vuelve a cifrar y borra los .md y cover.webp
 ```
 
-Los `.md` están en `.gitignore`: no subirlos nunca. Para cambiar la contraseña, descifrar con la antigua y cifrar con la nueva. El descifrado en el navegador necesita HTTPS (GitHub Pages lo usa).
+Los `.md` y `cover.webp` están en `.gitignore`: no subirlos nunca. Para cambiar la contraseña, descifrar con la antigua y cifrar con la nueva. El descifrado en el navegador necesita HTTPS (GitHub Pages lo usa).
 
 ## Publicación
 

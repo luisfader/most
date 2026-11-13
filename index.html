@@ -25,7 +25,7 @@ a{color:var(--accent)}
 .tools .sw{width:26px;height:26px;border-radius:50%;padding:0}
 .progress{height:2px;background:var(--accent);width:0}
 main{max-width:680px;margin:0 auto;padding:0 16px 60px}
-.hero{text-align:center;padding:48px 0 20px}
+.hero{text-align:center;padding:28px 0 20px}
 .hero .mark{font-family:var(--display);font-size:72px;line-height:1;margin:0}
 .hero .by{font-family:var(--sans);font-size:14px;color:var(--muted);margin-top:10px}
 .pill{display:inline-block;font:600 12px var(--sans);border-radius:999px;padding:3px 9px;background:var(--accent);color:#fff;margin-left:6px}
@@ -53,6 +53,8 @@ article hr::after{content:"⁂";color:var(--muted)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
 .chips a,.chips span{display:inline-block;min-width:30px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);font-size:13px;text-decoration:none;color:var(--ink)}
 .chips span{color:var(--muted);opacity:.6}.chips a{border-color:var(--accent);background:var(--accent-soft)}
+.cover{margin:28px auto 0;max-width:420px}
+.cover img{display:block;width:100%;height:auto;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .gate{text-align:center;padding:80px 0}
 .gate .b18{display:inline-block;font:700 22px var(--sans);background:#b3261e;color:#fff;border-radius:10px;padding:8px 14px}
 .gate h1{font-family:var(--display);font-size:40px;margin:20px 0 8px}
@@ -121,8 +123,16 @@ function endingsHTML(cur){
 let aesKey = null;
 const unb64 = s => Uint8Array.from(atob(s.trim()), c => c.charCodeAt(0));
 async function importRaw(raw){ return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]); }
-async function open64(key, data){ const u = unb64(data);
-  return new TextDecoder().decode(await crypto.subtle.decrypt({name: "AES-GCM", iv: u.slice(0, 12)}, key, u.slice(12))); }
+async function openRaw(key, data){ const u = unb64(data);
+  return crypto.subtle.decrypt({name: "AES-GCM", iv: u.slice(0, 12)}, key, u.slice(12)); }
+async function open64(key, data){ return new TextDecoder().decode(await openRaw(key, data)); }
+let coverURL = null;
+async function loadCover(){
+  if (coverURL) return coverURL;
+  try { const buf = await openRaw(aesKey, await (await fetch("cover.enc")).text());
+    coverURL = URL.createObjectURL(new Blob([buf], {type: "image/webp"})); } catch(e) { coverURL = ""; }
+  return coverURL;
+}
 async function unlock(password){
   const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
   const bits = new Uint8Array(await crypto.subtle.deriveBits({name: "PBKDF2", salt: unb64(book.lock.salt), iterations: book.lock.iter, hash: "SHA-256"}, base, 256));
@@ -156,19 +166,21 @@ function gate(){
 function home(){
   document.title = "Мост — книга-игра";
   const last = store.get("last", null);
-  app.innerHTML = `<section class="hero"><p class="mark">Мост</p>
+  app.innerHTML = `<figure class="cover"><img id="coverImg" alt="Мост — Роберт Фадер. Роман только для тебя" hidden></figure>
+    <section class="hero"><p class="mark">Мост</p>
     <div class="by">${esc(book.author)} · ${esc(book.genre)} · ${esc(book.year)} <span class="pill">18+</span></div></section>
     <div class="desc">${book.description.split("\n").map(p => `<p>${esc(p)}</p>`).join("")}</div>
     <div class="btns">${last ? `<a class="btn" href="#/${last}">Продолжить</a>` : ""}<a class="btn${last ? " ghost" : ""}" href="#/1">${last ? "Начать сначала" : "Начать игру"}</a></div>
-    <section class="panel"><h2>Финалы</h2><p class="note">В конце каждого эпизода ты выбираешь, что делать дальше. Твои решения ведут к одному из финалов. Открытые финалы сохраняются в этом браузере.</p>${endingsHTML()}</section>`;
+    <section class="panel" id="endings"><h2>Финалы</h2><p class="note">В конце каждого эпизода ты выбираешь, что делать дальше. Твои решения ведут к одному из финалов. Открытые финалы сохраняются в этом браузере.</p>${endingsHTML()}</section>`;
   window.scrollTo(0, 0);
+  loadCover().then(u => { const im = document.getElementById("coverImg"); if (u && im) { im.src = u; im.hidden = false; const mk = document.querySelector(".hero .mark"); if (mk) mk.hidden = true; } });
 }
 
 async function episode(i){
   const c = book.chapters[i - 1]; if (!c) return home();
   if (!cache[c.file]) {
     app.innerHTML = `<p style="text-align:center;padding:60px 0">…</p>`;
-    try { cache[c.file] = await open64(aesKey, await (await fetch("episodes/" + c.file.replace(/\.md$/, ".enc"))).text()); } catch(e) { console.error("decrypt", e && e.message); return gate(); }
+    try { cache[c.file] = await open64(aesKey, await (await fetch("episodes/" + c.file.replace(/\.md$/, ".enc"))).text()); } catch(e) { return gate(); }
   }
   if (c.ending) { const f = store.get("endings", []); if (!f.includes(c.file)) { f.push(c.file); store.set("endings", f); } }
   else store.set("last", i);
