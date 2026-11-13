@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мост — книга-игра</title>
+<meta name="description" content="Мост — книга-игра Роберта Фадера. Героиня — ты. 22 финала.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f1e7;--paper:#fbf8f2;--ink:#2a2420;--muted:#7a6e62;--line:#e2d8c8;--accent:#8c2f2f;--accent-soft:#f0e2dc;
+  --serif:"PT Serif",Georgia,serif;--display:"Cormorant Garamond","PT Serif",Georgia,serif;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--size:20px}
+:root[data-theme="sepia"]{--bg:#efe2c8;--paper:#f4e9d3;--ink:#3b2e22;--muted:#7d6a52;--line:#dcc9a6;--accent:#8a4b20;--accent-soft:#ead7b5}
+:root[data-theme="dark"]{--bg:#1d1914;--paper:#231e18;--ink:#e8dfd2;--muted:#a59886;--line:#3a3128;--accent:#d98c7a;--accent-soft:#2c211c}
+@media (prefers-color-scheme: dark){:root:not([data-theme]){--bg:#1d1914;--paper:#231e18;--ink:#e8dfd2;--muted:#a59886;--line:#3a3128;--accent:#d98c7a;--accent-soft:#2c211c}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:var(--serif);line-height:1.65;-webkit-text-size-adjust:100%}
+a{color:var(--accent)}
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar .in{max-width:760px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--sans);font-size:14px}
+.bar a.home{text-decoration:none;color:var(--ink);font-family:var(--display);font-size:24px;font-weight:600}
+.tools{display:flex;gap:6px;align-items:center}
+.tools button{font:600 13px var(--sans);border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:6px 9px;cursor:pointer}
+.tools .sw{width:26px;height:26px;border-radius:50%;padding:0}
+.progress{height:2px;background:var(--accent);width:0}
+main{max-width:680px;margin:0 auto;padding:0 16px 60px}
+.hero{text-align:center;padding:48px 0 20px}
+.hero .mark{font-family:var(--display);font-size:72px;line-height:1;margin:0}
+.hero .by{font-family:var(--sans);font-size:14px;color:var(--muted);margin-top:10px}
+.pill{display:inline-block;font:600 12px var(--sans);border-radius:999px;padding:3px 9px;background:var(--accent);color:#fff;margin-left:6px}
+.desc p{margin:0 0 1em}
+.btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:26px 0}
+.btn{display:inline-block;font:600 15px var(--sans);text-decoration:none;border-radius:10px;padding:13px 20px;background:var(--accent);color:#fff;border:1px solid var(--accent);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+article{font-size:var(--size)}
+article .kicker{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:40px}
+article h1{font-family:var(--display);font-weight:600;font-size:2em;line-height:1.15;text-align:center;margin:10px 0 32px}
+article p{margin:0 0 1.1em}
+article hr{border:0;text-align:center;margin:1.8em 0}
+article hr::after{content:"⁂";color:var(--muted)}
+.choices{margin:40px 0 10px;display:flex;flex-direction:column;gap:12px}
+.choices .q{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:4px}
+.choices a{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--accent);border-radius:12px;padding:16px 18px;text-decoration:none;color:var(--ink);background:var(--accent-soft);line-height:1.45;font-size:.95em;transition:transform .15s}
+.choices a::before{content:"→";color:var(--accent);font-family:var(--sans);flex:none}
+.choices a:hover{transform:translateX(3px)}
+.panel{margin:28px 0;padding:22px 20px;border:1px solid var(--line);border-radius:16px;font-family:var(--sans);text-align:center;background:var(--paper)}
+.panel h2{font-family:var(--display);font-size:28px;margin:0 0 6px;font-weight:600}
+.panel .note{font-size:14px;color:var(--muted);margin:0 0 14px}
+.panel.tragic h2{color:#9a3a4a}.panel.neutral h2{color:var(--muted)}.panel.happy h2{color:#b0702a}.panel.wedding h2{color:#b8902a}
+.count{font-size:15px;margin-bottom:6px}
+.row{margin:12px 0}.row b{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.chips a,.chips span{display:inline-block;min-width:30px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);font-size:13px;text-decoration:none;color:var(--ink)}
+.chips span{color:var(--muted);opacity:.6}.chips a{border-color:var(--accent);background:var(--accent-soft)}
+.gate{text-align:center;padding:80px 0}
+.gate .b18{display:inline-block;font:700 22px var(--sans);background:#b3261e;color:#fff;border-radius:10px;padding:8px 14px}
+.gate h1{font-family:var(--display);font-size:40px;margin:20px 0 8px}
+.gate p{color:var(--muted)}
+footer{text-align:center;font:13px var(--sans);color:var(--muted);padding:30px 16px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="bar"><div class="in">
+  <a class="home" href="#/">Мост</a>
+  <div class="tools">
+    <button id="am" aria-label="Уменьшить шрифт">A−</button><button id="ap" aria-label="Увеличить шрифт">A+</button>
+    <button class="sw" data-th="light" style="background:#fbf8f2" aria-label="Светлая тема"></button>
+    <button class="sw" data-th="sepia" style="background:#efe2c8" aria-label="Сепия"></button>
+    <button class="sw" data-th="dark" style="background:#1d1914" aria-label="Тёмная тема"></button>
+  </div></div><div class="progress" id="prog"></div></div>
+<main id="app"><p style="text-align:center;padding:60px 0">…</p></main>
+<footer>© Роберт Фадер. Все права защищены.</footer>
+<script>
+const store = {
+  get(k, d){ try { const v = localStorage.getItem("most:" + k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem("most:" + k, JSON.stringify(v)); } catch(e){} }
+};
+const TYPES = {tragic:["Трагический финал","Трагические финалы"], neutral:["Нейтральный финал","Нейтральные финалы"], happy:["Счастливый финал","Счастливые финалы"], wedding:["Свадебный финал","Свадьба"]};
+const ORDER = ["tragic","neutral","happy","wedding"];
+const app = document.getElementById("app");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let book = null; const cache = {};
+
+function applyTheme(){
+  const th = store.get("theme", null); if (th) document.documentElement.dataset.theme = th;
+  document.documentElement.style.setProperty("--size", store.get("size", 20) + "px");
+}
+applyTheme();
+document.querySelectorAll("[data-th]").forEach(b => b.onclick = () => { store.set("theme", b.dataset.th); applyTheme(); });
+document.getElementById("am").onclick = () => { store.set("size", Math.max(15, store.get("size", 20) - 1)); applyTheme(); };
+document.getElementById("ap").onclick = () => { store.set("size", Math.min(28, store.get("size", 20) + 1)); applyTheme(); };
+
+function inline(s){
+  return esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1<em>$2</em>");
+}
+function render(md){
+  return md.replace(/\r/g, "").split(/\n\s*\n/).map(b => b.trim()).filter(Boolean).map(b => {
+    if (/^(\*\s*){3,}$/.test(b)) return "<hr>";
+    if (/^:::\s*choices/i.test(b)) {
+      const rows = b.split("\n"), q = rows[0].replace(/^:::\s*choices\s*/i, "").trim();
+      const items = rows.slice(1).map(r => r.trim().match(/^\[([^\]]+)\]\(([^)\s]+)\)$/)).filter(Boolean);
+      return `<nav class="choices">${q ? `<div class="q">${inline(q)}</div>` : ""}${items.map(x => `<a href="${esc(hrefOf(x[2]))}">${inline(x[1])}</a>`).join("")}</nav>`;
+    }
+    return "<p>" + inline(b).replace(/\n/g, "<br>") + "</p>";
+  }).join("\n");
+}
+const idxOf = file => book.chapters.findIndex(c => c.file === file) + 1;
+const hrefOf = file => "#/" + idxOf(file);
+
+function endingsHTML(cur){
+  const found = store.get("endings", []);
+  const all = book.chapters.map((c, i) => ({c, i: i + 1})).filter(x => x.c.ending);
+  const rows = ORDER.map(ty => { const xs = all.filter(x => x.c.ending === ty);
+    return `<div class="row"><b>${TYPES[ty][1]} · ${xs.filter(x => found.includes(x.c.file)).length} / ${xs.length}</b><div class="chips">${xs.map(x =>
+      found.includes(x.c.file) ? `<a href="#/${x.i}"${x.i === cur ? ' aria-current="true"' : ""}>${esc(x.c.title)}</a>` : "<span>?</span>").join("")}</div></div>`; }).join("");
+  return `<div class="count">Открыто финалов: ${all.filter(x => found.includes(x.c.file)).length} из ${all.length}</div>${rows}`;
+}
+
+function gate(){
+  app.innerHTML = `<section class="gate"><span class="b18">18+</span><h1>Только для взрослых</h1>
+    <p>Эта книга содержит откровенные сцены и предназначена для читателей старше 18 лет.</p>
+    <div class="btns"><button class="btn" id="yes">Мне есть 18 лет</button><a class="btn ghost" href="https://www.google.com/">Уйти</a></div></section>`;
+  document.getElementById("yes").onclick = () => { store.set("adult", true); route(); };
+}
+
+function home(){
+  document.title = "Мост — книга-игра";
+  const last = store.get("last", null);
+  app.innerHTML = `<section class="hero"><p class="mark">Мост</p>
+    <div class="by">${esc(book.author)} · ${esc(book.genre)} · ${esc(book.year)} <span class="pill">18+</span></div></section>
+    <div class="desc">${book.description.split("\n").map(p => `<p>${esc(p)}</p>`).join("")}</div>
+    <div class="btns">${last ? `<a class="btn" href="#/${last}">Продолжить</a>` : ""}<a class="btn${last ? " ghost" : ""}" href="#/1">${last ? "Начать сначала" : "Начать игру"}</a></div>
+    <section class="panel"><h2>Финалы</h2><p class="note">В конце каждого эпизода ты выбираешь, что делать дальше. Твои решения ведут к одному из финалов. Открытые финалы сохраняются в этом браузере.</p>${endingsHTML()}</section>`;
+  window.scrollTo(0, 0);
+}
+
+async function episode(i){
+  const c = book.chapters[i - 1]; if (!c) return home();
+  if (!cache[c.file]) {
+    app.innerHTML = `<p style="text-align:center;padding:60px 0">…</p>`;
+    try { cache[c.file] = await (await fetch("episodes/" + c.file)).text(); } catch(e) { cache[c.file] = "*Не удалось загрузить эпизод.*"; }
+  }
+  if (c.ending) { const f = store.get("endings", []); if (!f.includes(c.file)) { f.push(c.file); store.set("endings", f); } }
+  else store.set("last", i);
+  const num = book.chapters.slice(0, i).filter(x => !x.ending).length;
+  document.title = c.title + " · Мост";
+  const lastChoice = store.get("last", null);
+  app.innerHTML = `<article><div class="kicker">${c.ending ? TYPES[c.ending][0] : "Эпизод " + num}</div><h1>${esc(c.title)}</h1>${render(cache[c.file])}</article>
+    ${c.ending ? `<section class="panel ${c.ending}"><h2>✦ ${TYPES[c.ending][0]} ✦</h2>${endingsHTML(i)}
+      <div class="btns"><a class="btn" href="#/1">Начать сначала</a>${lastChoice ? `<a class="btn ghost" href="#/${lastChoice}">← Вернуться к последнему выбору</a>` : ""}<a class="btn ghost" href="#/">Все финалы</a></div></section>` : ""}`;
+  window.scrollTo(0, 0); setTimeout(() => window.scrollTo(0, 0), 60);
+}
+
+function route(){
+  if (!book) return;
+  if (!store.get("adult", false)) return gate();
+  const m = location.hash.match(/^#\/(\d+)/);
+  m ? episode(+m[1]) : home();
+}
+window.addEventListener("hashchange", route);
+window.addEventListener("scroll", () => {
+  const h = document.documentElement.scrollHeight - innerHeight;
+  document.getElementById("prog").style.width = (h > 0 ? Math.min(1, scrollY / h) * 100 : 0) + "%";
+}, {passive: true});
+fetch("book.json").then(r => r.json()).then(b => { book = b; route(); })
+  .catch(() => { app.innerHTML = `<p style="text-align:center;padding:60px 0">Не удалось загрузить книгу.</p>`; });
+</script>
+</body>
+</html>
