@@ -117,11 +117,40 @@ function endingsHTML(cur){
   return `<div class="count">Открыто финалов: ${all.filter(x => found.includes(x.c.file)).length} из ${all.length}</div>${rows}`;
 }
 
+/* Episodes are AES-GCM encrypted; the key comes from the password (PBKDF2-SHA256, salt/iter in book.json) */
+let aesKey = null;
+const unb64 = s => Uint8Array.from(atob(s.trim()), c => c.charCodeAt(0));
+async function importRaw(raw){ return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]); }
+async function open64(key, data){ const u = unb64(data);
+  return new TextDecoder().decode(await crypto.subtle.decrypt({name: "AES-GCM", iv: u.slice(0, 12)}, key, u.slice(12))); }
+async function unlock(password){
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits({name: "PBKDF2", salt: unb64(book.lock.salt), iterations: book.lock.iter, hash: "SHA-256"}, base, 256));
+  const key = await importRaw(bits);
+  if (await open64(key, book.lock.check) !== "most-ok") throw new Error("bad");
+  return {key, bits};
+}
+async function restoreKey(){
+  if (aesKey) return true;
+  const saved = store.get("key", null); if (!saved) return false;
+  try { const key = await importRaw(unb64(saved)); await open64(key, book.lock.check); aesKey = key; return true; }
+  catch(e){ store.set("key", null); return false; }
+}
 function gate(){
   app.innerHTML = `<section class="gate"><span class="b18">18+</span><h1>Только для взрослых</h1>
     <p>Эта книга содержит откровенные сцены и предназначена для читателей старше 18 лет.</p>
-    <div class="btns"><button class="btn" id="yes">Мне есть 18 лет</button><a class="btn ghost" href="https://www.google.com/">Уйти</a></div></section>`;
-  document.getElementById("yes").onclick = () => { store.set("adult", true); route(); };
+    <form id="gf" style="max-width:340px;margin:24px auto 0;text-align:left;font-family:var(--sans)">
+      <label style="display:flex;gap:10px;align-items:center;font-size:15px;margin-bottom:14px"><input type="checkbox" id="age" required> Мне есть 18 лет</label>
+      <label for="pw" style="display:block;font-size:13px;color:var(--muted);margin-bottom:6px">Пароль</label>
+      <input type="password" id="pw" required autocomplete="current-password" style="width:100%;font:16px var(--sans);padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink)">
+      <div id="gerr" role="alert" style="color:#b3261e;font-size:14px;min-height:20px;margin-top:8px"></div>
+      <div class="btns" style="margin-top:8px"><button class="btn" id="yes" type="submit">Войти</button><a class="btn ghost" href="https://www.google.com/">Уйти</a></div>
+    </form></section>`;
+  const f = document.getElementById("gf"), err = document.getElementById("gerr"), btn = document.getElementById("yes");
+  f.onsubmit = async e => { e.preventDefault(); err.textContent = ""; btn.disabled = true; btn.textContent = "…";
+    try { const r = await unlock(document.getElementById("pw").value); aesKey = r.key;
+      store.set("adult", true); store.set("key", btoa(String.fromCharCode(...r.bits))); route(); }
+    catch(x){ err.textContent = "Неверный пароль"; btn.disabled = false; btn.textContent = "Войти"; } };
 }
 
 function home(){
@@ -139,7 +168,7 @@ async function episode(i){
   const c = book.chapters[i - 1]; if (!c) return home();
   if (!cache[c.file]) {
     app.innerHTML = `<p style="text-align:center;padding:60px 0">…</p>`;
-    try { cache[c.file] = await (await fetch("episodes/" + c.file)).text(); } catch(e) { cache[c.file] = "*Не удалось загрузить эпизод.*"; }
+    try { cache[c.file] = await open64(aesKey, await (await fetch("episodes/" + c.file.replace(/\.md$/, ".enc"))).text()); } catch(e) { console.error("decrypt", e && e.message); return gate(); }
   }
   if (c.ending) { const f = store.get("endings", []); if (!f.includes(c.file)) { f.push(c.file); store.set("endings", f); } }
   else store.set("last", i);
@@ -152,9 +181,9 @@ async function episode(i){
   window.scrollTo(0, 0); setTimeout(() => window.scrollTo(0, 0), 60);
 }
 
-function route(){
+async function route(){
   if (!book) return;
-  if (!store.get("adult", false)) return gate();
+  if (!store.get("adult", false) || !(await restoreKey())) return gate();
   const m = location.hash.match(/^#\/(\d+)/);
   m ? episode(+m[1]) : home();
 }

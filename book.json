@@ -211,5 +211,10 @@
    "ending": "neutral",
    "title": "Обратный путь"
   }
- ]
+ ],
+ "lock": {
+  "salt": "42PFNBBVkpzjUztpb5aL6g==",
+  "iter": 250000,
+  "check": "YkcwLjOLIj38xjYVgwjL2wZZD7YqCRgMK5J5GTnsiT8qDR4="
+ }
 }
