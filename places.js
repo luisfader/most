@@ -5,166 +5,241 @@
 (function(){
 "use strict";
 
-/* ───────── помощники для SVG ───────── */
-const onion = (cx, by, w, h, fill, stroke) => `<path d="M${cx - w * .36},${by} C${cx - w * .78},${by - h * .36} ${cx - w * .26},${by - h * .72} ${cx},${by - h} C${cx + w * .26},${by - h * .72} ${cx + w * .78},${by - h * .36} ${cx + w * .36},${by} Z" fill="${fill}"${stroke ? ` stroke="${stroke}" stroke-width="1.5"` : ""}/>`;
-const cross = (x, y, s, c) => `<g stroke="${c || "#e3b84e"}" stroke-width="${s * .22}" stroke-linecap="round"><line x1="${x}" y1="${y}" x2="${x}" y2="${y - s * 1.6}"/><line x1="${x - s * .5}" y1="${y - s * 1.1}" x2="${x + s * .5}" y2="${y - s * 1.1}"/></g>`;
-const star = (cx, cy, r, fill, rim) => { let d = ""; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; d += (i ? "L" : "M") + (cx + Math.cos(a) * rr).toFixed(1) + "," + (cy + Math.sin(a) * rr).toFixed(1); } return `<path d="${d}Z" fill="${fill}"${rim ? ` stroke="${rim}" stroke-width="1.6" stroke-linejoin="round"` : ""}/>`; };
-const windows = (x0, y0, cols, rows, dx, dy, w, h, fill) => { let s = ""; for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) s += `<rect x="${x0 + i * dx}" y="${y0 + j * dy}" width="${w}" height="${h}" rx="${Math.min(w, h) * .25}" fill="${fill}"/>`; return s; };
-const sky = (id, a, b, c) => `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset=".7" stop-color="${b}"/><stop offset="1" stop-color="${c || b}"/></linearGradient></defs><rect width="400" height="300" fill="url(#${id})"/>`;
-const merlons = (x0, x1, y, h, fill) => { let s = `<rect x="${x0}" y="${y}" width="${x1 - x0}" height="${300 - y}" fill="${fill}"/>`; for (let x = x0; x < x1; x += 12) s += `<path d="M${x + 1},${y} v-${h} l3,3 l3,-3 v${h} z" fill="${fill}"/>`; return s; };
-const water = (y, a, b) => `<rect y="${y}" width="400" height="${300 - y}" fill="${a}"/>` + Array.from({length:14}, (_, i) => `<rect x="${(i * 53) % 380}" y="${y + 8 + (i * 17) % (300 - y - 12)}" width="${18 + (i * 7) % 26}" height="2" rx="1" fill="${b}"/>`).join("");
-const horse = (x, y, s, f, flip) => `<g transform="translate(${x},${y}) scale(${flip ? -s : s},${s})" fill="${f}"><ellipse cx="0" cy="0" rx="14" ry="7" transform="rotate(-25)"/><path d="M8,-8 Q14,-22 20,-26 L25,-22 Q19,-16 14,-4 Z"/><path d="M-8,4 L-12,18 L-9,18 L-4,6 Z M4,3 L6,18 L9,18 L8,2 Z M10,-6 L20,-2 L22,1 L11,-1 Z M12,-9 L22,-12 L23,-9 L13,-5 Z"/><path d="M-13,-2 Q-24,2 -22,12 Q-17,4 -12,2 Z"/></g>`;
+/* ───────── помощники для SVG (у каждого рисунка свой префикс id, чтобы градиенты не путались) ───────── */
+const f1 = n => +n.toFixed(1);
+const onionD = (cx, by, w, h) => `M${f1(cx - w * .34)},${by} C${f1(cx - w * .8)},${f1(by - h * .32)} ${f1(cx - w * .3)},${f1(by - h * .7)} ${cx},${f1(by - h)} C${f1(cx + w * .3)},${f1(by - h * .7)} ${f1(cx + w * .8)},${f1(by - h * .32)} ${f1(cx + w * .34)},${by} Z`;
+const onion = (p, cx, by, w, h, fill) => `<path d="${onionD(cx, by, w, h)}" fill="${fill}"/><path d="${onionD(cx, by, w, h)}" fill="url(#${p}sh)"/>`;
+const cross = (x, y, s, c) => `<g stroke="${c || "#e8c060"}" stroke-width="${f1(s * .24)}" stroke-linecap="round"><line x1="${x}" y1="${y}" x2="${x}" y2="${f1(y - s * 1.8)}"/><line x1="${f1(x - s * .55)}" y1="${f1(y - s * 1.25)}" x2="${f1(x + s * .55)}" y2="${f1(y - s * 1.25)}"/><line x1="${f1(x - s * .35)}" y1="${f1(y - s * .55)}" x2="${f1(x + s * .35)}" y2="${f1(y - s * .75)}"/></g>`;
+const star = (cx, cy, r, fill, rim) => { let d = ""; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; d += (i ? "L" : "M") + f1(cx + Math.cos(a) * rr) + "," + f1(cy + Math.sin(a) * rr); } return `<path d="${d}Z" fill="${fill}"${rim ? ` stroke="${rim}" stroke-width="${f1(r * .16)}" stroke-linejoin="round"` : ""}/>`; };
+const grid = (x0, y0, cols, rows, dx, dy, w, h, fill, arch) => { let s = ""; for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) { const x = f1(x0 + i * dx), y = f1(y0 + j * dy); s += arch ? `<path d="M${x},${f1(y + h)} v-${f1(h - w / 2)} a${w / 2},${w / 2} 0 0 1 ${w},0 v${f1(h - w / 2)} z" fill="${fill}"/>` : `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`; } return s; };
+const defs = (p, extra) => `<defs>
+  <linearGradient id="${p}sh" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".42" stop-color="#fff" stop-opacity="0"/><stop offset=".62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".32"/></linearGradient>
+  <linearGradient id="${p}g" x1="0" x2="1"><stop offset="0" stop-color="#fbe7a2"/><stop offset=".4" stop-color="#e6bb4f"/><stop offset="1" stop-color="#9c6d1a"/></linearGradient>
+  <linearGradient id="${p}cy" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>${extra || ""}</defs>`;
+const sky = (p, stops) => `<linearGradient id="${p}sk" x1="0" y1="0" x2="0" y2="1">${stops.map((c, i) => `<stop offset="${f1(i / (stops.length - 1))}" stop-color="${c}"/>`).join("")}</linearGradient>`;
+const bg = p => `<rect width="400" height="300" fill="url(#${p}sk)"/>`;
+// кремлёвская стена с зубцами «ласточкин хвост»
+const kwall = (x0, x1, y, h, fill, dark) => { let s = `<rect x="${x0}" y="${y}" width="${x1 - x0}" height="${300 - y}" fill="${fill}"/><rect x="${x0}" y="${y}" width="${x1 - x0}" height="3" fill="${dark}"/>`; for (let x = x0 + 2; x < x1 - 6; x += 11) s += `<path d="M${x},${y} v-${h} l3.3,${f1(h * .32)} l3.3,-${f1(h * .32)} v${h} z" fill="${fill}"/>`; return s; };
+// ряд кокошников
+const kok = (x0, n, w, y, fill, line) => Array.from({length:n}, (_, i) => `<path d="M${f1(x0 + i * w)},${y} a${w / 2},${f1(w * .62)} 0 0 1 ${w},0 z" fill="${fill}" stroke="${line}" stroke-width="1.2"/>`).join("");
+const waterD = (p, y, a, b, glint) => `<linearGradient id="${p}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
+const water = (p, y, glint) => `<rect y="${y}" width="400" height="${300 - y}" fill="url(#${p}w)"/>` + Array.from({length:22}, (_, i) => `<rect x="${(i * 61 + (i % 3) * 17) % 390}" y="${f1(y + 6 + ((i * 23) % (300 - y - 10)))}" width="${14 + (i * 11) % 30}" height="1.8" rx=".9" fill="${glint}"/>`).join("");
+const tree = (x, y, r, a, b) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${a}"/><circle cx="${f1(x - r * .35)}" cy="${f1(y - r * .3)}" r="${f1(r * .55)}" fill="${b}"/>`;
+const person = (x, y, s, body, head) => `<g transform="translate(${x},${y}) scale(${s})"><circle cx="0" cy="-17" r="3.4" fill="${head || "#3a2e28"}"/><path d="M-3.6,-13 h7.2 l1.4,9 h-2.4 l-.6,4 h-4 l-.6,-4 h-2.4 z" fill="${body}"/></g>`;
+// конь в профиль, вставший на дыбы (смотрит вправо); для квадриги
+const horseD = "M2,30 C1,24 4,19 10,18 C16,17 22,17 27,15 L33,6 C35,2 39,0 43,2 L47,6 C48,8 47,10 45,10 L41,9 L38,15 C42,17 44,21 43,26 L49,22 L52,25 L44,31 C41,33 37,33 34,32 L34,42 L31,42 L30,33 C24,34 18,34 14,33 L12,42 L9,42 L9,32 C6,32 4,33 2,36 C0,34 0,32 2,30 Z";
+const horse = (x, y, s, fill, flip) => `<path d="${horseD}" transform="translate(${x},${y}) scale(${flip ? -s : s},${s})" fill="${fill}"/>`;
 
 /* ───────── 12 мест Москвы. focus — стартовый крупный план [x, y, ширина] в координатах 400×300 ───────── */
 const PLACES = [
-  {id:"zaryadye", name:"Парящий мост в «Зарядье»", focus:[248, 116, 92],
+  {id:"zaryadye", name:"Парящий мост в «Зарядье»", focus:[238, 92, 96],
    opts:["Парящий мост в «Зарядье»", "Пушкинский мост", "Мост «Багратион»", "Бородинский мост"],
    fact:"Мост в парке «Зарядье» открыли в 2017 году. Он выступает над Москвой-рекой, как буква V, и не опирается на воду. С него в романе всё и начинается.",
-   svg:() => sky("z1", "#9cc6e8", "#f6dcc0") +
-     merlons(0, 400, 158, 9, "#a8443a") + `<rect x="54" y="98" width="34" height="60" fill="#a8443a"/><path d="M50,98 L71,52 L92,98 Z" fill="#7a2f28"/>${star(71, 48, 6, "#c43a3a", "#e3b84e")}` +
-     onion(150, 126, 22, 28, "#3f8a5a") + onion(170, 118, 24, 32, "#d8a33c") + onion(190, 128, 20, 26, "#4b76b9") + `<rect x="138" y="126" width="64" height="32" fill="#b9564c"/>` +
-     water(190, "#5f86a8", "rgba(255,255,255,.35)") +
-     `<path d="M-10,212 L318,152 Q326,151 326,158 L-10,252 Z" fill="#d9cdb8"/><path d="M-10,212 L318,152 L318,158 L-10,222 Z" fill="#b9ab95"/>
-      <path d="M-10,212 L318,152 L318,128 Q324,127 326,131 L326,158 L318,152 L-10,212 L-10,186 Z" fill="rgba(210,236,255,.55)" stroke="#8fb8d8" stroke-width="1.5"/>
-      ${Array.from({length:18}, (_, i) => { const x = i * 18; return `<line x1="${x}" y1="${210 - x * .18}" x2="${x}" y2="${184 - x * .17}" stroke="#8fb8d8" stroke-width="1"/>`; }).join("")}
-      <circle cx="262" cy="148" r="3" fill="#2c2c34"/><rect x="259.5" y="150" width="5" height="13" rx="2" fill="#c0392b"/><circle cx="276" cy="145" r="3" fill="#2c2c34"/><rect x="273.5" y="147" width="5" height="13" rx="2" fill="#2e5a8a"/>`},
-  {id:"basil", name:"Собор Василия Блаженного", focus:[84, 90, 70],
+   svg:() => { const p = "za"; return defs(p, sky(p, ["#8fc0ea", "#d6e7f2", "#f7dcc0"]) + waterD(p, 0, "#86a9c8", "#46698c")) + bg(p) +
+     // Кремль вдали: соборы, колокольня Ивана Великого, стена и Беклемишевская башня
+     `<g opacity=".92"><rect x="84" y="118" width="54" height="40" fill="#efe9dc"/>${onion(p, 96, 120, 12, 15, `url(#${p}g)`)}${onion(p, 111, 112, 17, 21, `url(#${p}g)`)}${onion(p, 126, 120, 12, 15, `url(#${p}g)`)}${cross(111, 91, 4)}
+      <rect x="150" y="98" width="18" height="60" fill="#f4f0e6"/><rect x="152" y="78" width="14" height="20" fill="#f4f0e6"/><rect x="154" y="64" width="10" height="14" fill="#f4f0e6"/>${grid(153, 104, 2, 3, 8, 16, 4, 9, "#c9c1b0", true)}${onion(p, 159, 66, 14, 18, `url(#${p}g)`)}${cross(159, 47, 4)}</g>` +
+     kwall(0, 330, 150, 9, "#b14a3f", "#8c342c") +
+     `<rect x="252" y="96" width="34" height="58" fill="#b5493d"/><rect x="252" y="96" width="34" height="58" fill="url(#${p}cy)"/><rect x="249" y="96" width="40" height="6" fill="#9b3d33"/>${grid(252, 102, 6, 1, 6, 0, 3, 4, "#7a2c25")}
+      <rect x="258" y="80" width="22" height="16" fill="#b5493d"/><path d="M256,82 L269,30 L282,82 Z" fill="#3e6b50"/><path d="M269,30 L282,82 L269,82 Z" fill="#2f5640"/><rect x="265" y="22" width="8" height="10" fill="#b5493d"/><path d="M264,23 L269,10 L274,23 Z" fill="#3e6b50"/><line x1="269" y1="10" x2="269" y2="3" stroke="#e8c060" stroke-width="1.4"/>
+      <rect x="330" y="128" width="64" height="26" fill="#b5463c"/>${onion(p, 342, 130, 14, 18, "#3f8a5a")}${onion(p, 362, 120, 18, 24, "#e2b13d")}${onion(p, 382, 130, 14, 18, "#4b76b9")}<path d="M356,128 L362,96 L368,128 Z" fill="#b5463c"/>` +
+     water(p, 154, "rgba(255,255,255,.35)") +
+     // парк «Зарядье» и набережная
+     `${[[10, 150, 18], [36, 142, 22], [66, 150, 18], [92, 146, 20], [120, 152, 16]].map(([x, y, r]) => tree(x, y, r, "#5d8f4f", "#7aab62")).join("")}<rect x="0" y="158" width="150" height="14" fill="#b9b3a6"/><rect x="0" y="158" width="150" height="3" fill="#d8d2c4"/>
+      <path d="M70,170 C150,160 240,128 330,98 L338,104 C330,126 300,146 240,168 C190,184 120,190 70,190 Z" fill="#e9e5dc"/>
+      <path d="M70,170 C150,160 240,128 330,98 L338,104 C258,134 168,170 70,180 Z" fill="#cfc9bc"/>
+      ${Array.from({length:12}, (_, i) => { const t = i / 11, x = 90 + t * 230, y1 = 178 - t * 72, y2 = 188 - t * 46; return `<line x1="${f1(x)}" y1="${f1(y1)}" x2="${f1(x - 10)}" y2="${f1(y2)}" stroke="#d8d3c8" stroke-width="1.2"/>`; }).join("")}
+      <path d="M70,170 C150,160 240,128 330,98 L330,84 C240,114 150,146 70,158 Z" fill="rgba(205,232,250,.55)" stroke="#9cc3df" stroke-width="1.4"/>
+      ${Array.from({length:16}, (_, i) => { const t = i / 15, x = 70 + t * 260, y = 170 - t * 72 + Math.sin(t * 3) * -6; return `<line x1="${f1(x)}" y1="${f1(y)}" x2="${f1(x)}" y2="${f1(y - 12)}" stroke="#9cc3df" stroke-width="1"/>`; }).join("")}
+      ${person(286, 116, 1.05, "#c0392b")}${person(298, 112, 1.05, "#2e5a8a")}${person(312, 106, 1, "#e6b84a")}${person(250, 130, 1, "#5a4a8a")}`; }},
+  {id:"basil", name:"Собор Василия Блаженного", focus:[74, 84, 72],
    opts:["Собор Василия Блаженного", "Храм Христа Спасителя", "Казанский собор", "Новодевичий монастырь"],
    fact:"Покровский собор построили в 1555–1561 годах по приказу Ивана Грозного в честь взятия Казани. У каждого купола свой узор. В романе Наталья видит его с Парящего моста.",
-   svg:() => sky("b1", "#8fbde4", "#e8eef4") + `<defs>
-      <pattern id="b2" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(38)"><rect width="12" height="12" fill="#c8342e"/><rect width="6" height="12" fill="#2e8a4e"/></pattern>
-      <pattern id="b3" width="12" height="10" patternUnits="userSpaceOnUse"><rect width="12" height="10" fill="#2e8a4e"/><path d="M0,10 L6,2 L12,10 Z" fill="#e3b84e"/></pattern>
-      <pattern id="b4" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(-38)"><rect width="10" height="10" fill="#f2f0e6"/><rect width="5" height="10" fill="#2f5aa8"/></pattern>
-      <pattern id="b5" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#e8c34a"/><circle cx="5" cy="5" r="3" fill="#3f8a5a"/></pattern></defs>
-      <rect y="258" width="400" height="42" fill="#9a958e"/>
-      <path d="M182,152 L200,46 L218,152 Z" fill="#b9463e"/><path d="M190,152 L200,60 L210,152 Z" fill="none" stroke="#f2eadc" stroke-width="2" stroke-dasharray="6 8"/>${onion(200, 50, 14, 16, "#e3b84e")}${cross(200, 34, 6)}
-      <rect x="70" y="168" width="260" height="92" fill="#b9463e"/><rect x="70" y="168" width="260" height="6" fill="#f2eadc"/>
-      ${[100, 140, 180, 220, 260, 300].map(x => `<path d="M${x - 12},260 v-36 a12,12 0 0 1 24,0 v36 z" fill="#8a2f2a"/>`).join("")}
-      ${[[118, 148, 46, 54, "url(#b2)"], [156, 124, 44, 56, "url(#b3)"], [244, 124, 44, 56, "url(#b4)"], [282, 148, 46, 54, "url(#b5)"], [90, 174, 32, 36, "url(#b4)"], [310, 174, 32, 36, "url(#b2)"]].map(([x, by, w, h, f]) =>
-        `<rect x="${x - w * .32}" y="${by}" width="${w * .64}" height="${174 - by + 4}" fill="#c9554a"/><rect x="${x - w * .32}" y="${by}" width="${w * .64}" height="4" fill="#f2eadc"/>` + onion(x, by, w, h, f, "rgba(0,0,0,.12)") + onion(x, by - h + 2, 8, 9, "#e3b84e") + cross(x, by - h - 6, 4.5)).join("")}`},
-  {id:"spasskaya", name:"Спасская башня Кремля", focus:[166, 90, 68],
+   svg:() => { const p = "ba"; return defs(p, sky(p, ["#7fb4e4", "#cfe2f2", "#eef2f4"]) + `
+      <pattern id="${p}1" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(40)"><rect width="14" height="14" fill="#c9322c"/><rect width="7" height="14" fill="#2b8a4a"/></pattern>
+      <pattern id="${p}2" width="12" height="9" patternUnits="userSpaceOnUse"><rect width="12" height="9" fill="#2b8a4a"/><path d="M0,9 L6,1 L12,9 Z" fill="#f0c446"/></pattern>
+      <pattern id="${p}3" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(-40)"><rect width="12" height="12" fill="#f4f1e6"/><rect width="6" height="12" fill="#2f5aa8"/></pattern>
+      <pattern id="${p}4" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#2b8a4a"/><path d="M5,0 L10,5 L5,10 L0,5 Z" fill="#f0c446"/></pattern>
+      <pattern id="${p}5" width="12" height="8" patternUnits="userSpaceOnUse"><rect width="12" height="8" fill="#f0c446"/><path d="M0,8 L6,0 L12,8" fill="none" stroke="#c9322c" stroke-width="2.4"/></pattern>
+      <pattern id="${p}6" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(36)"><rect width="12" height="12" fill="#f0c446"/><rect width="6" height="12" fill="#2b8a4a"/></pattern>`) + bg(p) +
+     `<rect y="262" width="400" height="38" fill="#a29c94"/>${Array.from({length:9}, (_, i) => `<line x1="0" y1="${266 + i * 4}" x2="400" y2="${266 + i * 4}" stroke="rgba(0,0,0,.08)"/>`).join("")}
+      <path d="M180,150 L200,38 L220,150 Z" fill="#b8473d"/><path d="M200,38 L220,150 L200,150 Z" fill="#9c3a32"/>
+      ${[0, 1, 2, 3, 4, 5, 6].map(k => { const y = 56 + k * 14, hw = (y - 38) / 112 * 20; return `<path d="M${f1(200 - hw)},${y} L200,${y - 6} L${f1(200 + hw)},${y}" fill="none" stroke="#f3ead9" stroke-width="1.6"/>`; }).join("")}
+      <rect x="194" y="30" width="12" height="10" fill="#c9554a"/>${onion(p, 200, 32, 13, 15, `url(#${p}g)`)}${cross(200, 17, 5)}
+      <rect x="176" y="148" width="48" height="44" fill="#c2493f"/>${kok(176, 4, 12, 158, "#c2493f", "#f3ead9")}${kok(180, 3, 13.3, 148, "#c2493f", "#f3ead9")}
+      <rect x="40" y="188" width="320" height="74" fill="#b8453b"/><rect x="40" y="188" width="320" height="74" fill="url(#${p}cy)" opacity=".35"/><rect x="40" y="188" width="320" height="5" fill="#f3ead9"/><rect x="40" y="214" width="320" height="2" fill="#f3ead9"/>
+      ${grid(52, 226, 11, 1, 28, 0, 14, 36, "#7c2a24", true)}${grid(56, 196, 11, 1, 28, 0, 8, 14, "#f3ead9", true)}
+      ${[[108, 154, 46, 58, `url(#${p}1)`, 52], [152, 132, 46, 60, `url(#${p}2)`, 58], [248, 132, 46, 60, `url(#${p}3)`, 58], [292, 154, 46, 58, `url(#${p}4)`, 52], [72, 176, 32, 38, `url(#${p}5)`, 16], [328, 176, 32, 38, `url(#${p}6)`, 16]].map(([x, by, w, h, f, dh]) => {
+        const dw = w * .62; return `<rect x="${f1(x - dw / 2)}" y="${by}" width="${f1(dw)}" height="${dh}" fill="#c24c41"/><rect x="${f1(x - dw / 2)}" y="${by}" width="${f1(dw)}" height="${dh}" fill="url(#${p}cy)"/>${kok(x - dw / 2, 3, dw / 3, by + 12, "#c24c41", "#f3ead9")}<rect x="${f1(x - dw / 2 - 2)}" y="${by - 3}" width="${f1(dw + 4)}" height="4" fill="#f3ead9"/>` + onion(p, x, by - 2, w, h, f) + onion(p, x, by - h, 7, 8, `url(#${p}g)`) + cross(x, by - h - 7, 4.5); }).join("")}
+      <rect x="352" y="120" width="28" height="70" fill="#c24c41"/><rect x="348" y="114" width="36" height="8" fill="#f3ead9"/><path d="M350,114 L366,64 L382,114 Z" fill="#2f6b4a"/>${onion(p, 366, 66, 9, 11, `url(#${p}g)`)}${grid(356, 130, 2, 2, 12, 22, 6, 14, "#7c2a24", true)}`; }},
+  {id:"spasskaya", name:"Спасская башня Кремля", focus:[162, 86, 76],
    opts:["Спасская башня Кремля", "Сухарева башня", "Боровицкая башня", "Исторический музей"],
-   fact:"Главная башня Кремля с курантами. Рубиновая звезда на её шатре светится по ночам, а куранты слышно на всей Красной площади.",
-   svg:() => sky("s1", "#2c3e6e", "#c9a7c2", "#f3d6c0") +
-     merlons(0, 168, 200, 10, "#a33a32") + merlons(232, 400, 200, 10, "#a33a32") +
-     `<rect x="158" y="140" width="84" height="160" fill="#b4433a"/><path d="M186,300 v-50 a14,14 0 0 1 28,0 v50 z" fill="#4a1c18"/>
-      <rect x="158" y="140" width="84" height="5" fill="#f2eadc"/><rect x="168" y="94" width="64" height="48" fill="#b84a40"/><rect x="168" y="94" width="64" height="4" fill="#f2eadc"/>
-      <circle cx="200" cy="118" r="18" fill="#1d2f5a" stroke="#e3b84e" stroke-width="3"/>${Array.from({length:12}, (_, i) => { const a = i * Math.PI / 6; return `<line x1="${200 + Math.cos(a) * 12}" y1="${118 + Math.sin(a) * 12}" x2="${200 + Math.cos(a) * 15.5}" y2="${118 + Math.sin(a) * 15.5}" stroke="#e3b84e" stroke-width="2"/>`; }).join("")}
-      <line x1="200" y1="118" x2="200" y2="106" stroke="#e3b84e" stroke-width="2.4" stroke-linecap="round"/><line x1="200" y1="118" x2="208" y2="122" stroke="#e3b84e" stroke-width="2.4" stroke-linecap="round"/>
-      ${[164, 236].map(x => `<rect x="${x - 4}" y="78" width="8" height="18" fill="#f2eadc"/><path d="M${x - 5},78 L${x},64 L${x + 5},78 Z" fill="#2f6b4a"/>`).join("")}
-      <rect x="178" y="70" width="44" height="26" fill="#b84a40"/><rect x="178" y="70" width="44" height="3" fill="#f2eadc"/>
-      <path d="M180,72 L200,22 L220,72 Z" fill="#2f6b4a"/><path d="M180,72 L220,72" stroke="#e3b84e" stroke-width="2"/>${star(200, 15, 10, "#c8202a", "#e3b84e")}`},
-  {id:"patriarshy", name:"Патриарший мост", focus:[30, 140, 62],
+   fact:"Главная башня Кремля с курантами. Рубиновая звезда на её шатре светится по ночам, а бой курантов слышно на всей Красной площади.",
+   svg:() => { const p = "sp"; return defs(p, sky(p, ["#25385f", "#7d6f9c", "#e2a99a", "#f4d2b8"])) + bg(p) + `<g transform="translate(0,10)">` +
+     kwall(0, 162, 196, 14, "#a83c33", "#7e2b24") + kwall(238, 400, 196, 14, "#a83c33", "#7e2b24") +
+     `<rect y="276" width="400" height="24" fill="#5a4a46"/>
+      <rect x="156" y="148" width="88" height="152" fill="#b4453b"/><rect x="156" y="148" width="88" height="152" fill="url(#${p}cy)"/>
+      <path d="M182,300 v-52 a18,18 0 0 1 36,0 v52 z" fill="#f2eadc"/><path d="M186,300 v-50 a14,14 0 0 1 28,0 v50 z" fill="#3e1814"/><rect x="192" y="218" width="16" height="12" fill="#f2eadc"/><rect x="194" y="220" width="12" height="8" fill="#6a5a3a"/>
+      ${[160, 236].map(x => `<rect x="${x - 2}" y="152" width="8" height="148" fill="#f2eadc" opacity=".5"/>`).join("")}
+      <rect x="152" y="144" width="96" height="6" fill="#f2eadc"/>
+      ${[154, 246].map(x => `<rect x="${x - 6}" y="120" width="12" height="26" fill="#c24f44"/><rect x="${x - 7}" y="118" width="14" height="3" fill="#f2eadc"/><path d="M${x - 6},118 L${x},100 L${x + 6},118 Z" fill="#2f6b4a"/><circle cx="${x}" cy="97" r="2.2" fill="#e8c060"/>`).join("")}
+      <rect x="166" y="112" width="68" height="34" fill="#bd4a40"/><rect x="166" y="112" width="68" height="34" fill="url(#${p}cy)"/>${grid(172, 122, 4, 1, 16, 0, 8, 18, "#f2eadc", true)}${grid(174, 125, 4, 1, 16, 0, 4, 14, "#5c2420", true)}
+      <rect x="170" y="74" width="60" height="40" fill="#c24f44"/><rect x="170" y="74" width="60" height="40" fill="url(#${p}cy)"/><rect x="166" y="72" width="68" height="4" fill="#f2eadc"/><rect x="166" y="110" width="68" height="4" fill="#f2eadc"/>
+      <circle cx="200" cy="93" r="16" fill="#1c2c56" stroke="#e8c060" stroke-width="3"/>${Array.from({length:12}, (_, i) => { const a = i * Math.PI / 6; return `<line x1="${f1(200 + Math.cos(a) * 10.5)}" y1="${f1(93 + Math.sin(a) * 10.5)}" x2="${f1(200 + Math.cos(a) * 14)}" y2="${f1(93 + Math.sin(a) * 14)}" stroke="#e8c060" stroke-width="2"/>`; }).join("")}
+      <line x1="200" y1="93" x2="200" y2="82" stroke="#e8c060" stroke-width="2.4" stroke-linecap="round"/><line x1="200" y1="93" x2="208" y2="97" stroke="#e8c060" stroke-width="2.4" stroke-linecap="round"/>
+      ${[168, 232].map(x => `<rect x="${x - 4}" y="56" width="8" height="18" fill="#f2eadc"/><path d="M${x - 5},56 L${x},40 L${x + 5},56 Z" fill="#2f6b4a"/><circle cx="${x}" cy="38" r="1.8" fill="#e8c060"/>`).join("")}
+      <rect x="178" y="56" width="44" height="18" fill="#c24f44"/>${grid(182, 59, 4, 1, 10, 0, 6, 13, "#3e1814", true)}<rect x="176" y="54" width="48" height="3" fill="#f2eadc"/>
+      <path d="M180,56 L200,16 L220,56 Z" fill="#2f6b4a"/><path d="M200,16 L220,56 L200,56 Z" fill="#245639"/>${grid(193, 38, 2, 1, 9, 0, 5, 9, "#f2eadc", true)}<path d="M180,56 L220,56" stroke="#e8c060" stroke-width="2"/>
+      <rect x="198.6" y="8" width="2.8" height="10" fill="#e8c060"/>${star(200, 7, 9, "#d81f2b", "#e8c060")}<circle cx="200" cy="7" r="16" fill="#ff4a4a" opacity=".12"/></g>`; }},
+  {id:"patriarshy", name:"Патриарший мост", focus:[28, 126, 66],
    opts:["Патриарший мост", "Крымский мост", "Большой Каменный мост", "Москворецкий мост"],
    fact:"Пешеходный мост ведёт от храма Христа Спасителя к Берсеневской набережной. Его открыли в 2004 году. В романе здесь происходит «Поцелуй на Патриаршем мосту».",
-   svg:() => sky("p1", "#f2b48a", "#f8dcc0", "#e9c6a8") +
-     `<rect x="226" y="118" width="128" height="84" fill="#f4f0e8"/><rect x="266" y="92" width="48" height="28" fill="#efe9de"/>
-      <path d="M262,94 Q290,40 318,94 Z" fill="#e3b84e"/>${onion(290, 54, 10, 12, "#e3b84e")}${cross(290, 42, 5)}
-      ${[236, 344].map(x => `<rect x="${x - 7}" y="104" width="14" height="16" fill="#efe9de"/><path d="M${x - 8},106 Q${x},84 ${x + 8},106 Z" fill="#e3b84e"/>${cross(x, 90, 3)}`).join("")}
-      ${[244, 270, 296, 322].map(x => `<path d="M${x},202 v-40 a8,8 0 0 1 16,0 v40" fill="none" stroke="#d8cfbf" stroke-width="2"/>`).join("")}` +
-     water(214, "#7a8fb0", "rgba(255,230,200,.45)") +
-     `<rect x="0" y="198" width="400" height="12" fill="#5c6a66"/><rect x="0" y="190" width="400" height="3" fill="#3d4744"/>${Array.from({length:40}, (_, i) => `<rect x="${i * 10 + 2}" y="190" width="2" height="8" fill="#3d4744"/>`).join("")}
-      ${[[0, 140], [140, 270], [270, 400]].map(([a, b]) => `<path d="M${a},208 Q${(a + b) / 2},262 ${b},208" fill="none" stroke="#5c6a66" stroke-width="6"/>${Array.from({length:6}, (_, i) => { const x = a + (b - a) * (i + 1) / 7, t = (x - a) / (b - a), y = 208 + 4 * 54 * t * (1 - t) * .5 * 2 / 2; return `<line x1="${x}" y1="210" x2="${x}" y2="${y}" stroke="#5c6a66" stroke-width="2"/>`; }).join("")}`).join("")}
-      ${[60, 200, 340].map(x => `<rect x="${x - 2.5}" y="150" width="5" height="40" fill="#2f3634"/><path d="M${x - 16},158 Q${x},146 ${x + 16},158" fill="none" stroke="#2f3634" stroke-width="2.4"/>
-        ${[x - 16, x, x + 16].map((lx, k) => `<circle cx="${lx}" cy="${k === 1 ? 144 : 160}" r="5" fill="#fff1c4" stroke="#2f3634" stroke-width="1.5"/>`).join("")}`).join("")}`},
-  {id:"kotel", name:"Высотка на Котельнической набережной", focus:[166, 4, 68],
+   svg:() => { const p = "pa"; return defs(p, sky(p, ["#e9a07a", "#f4c9a4", "#f8e2c8"]) + waterD(p, 0, "#9a9cb8", "#5d6890")) + bg(p) +
+     `<rect x="0" y="152" width="90" height="46" fill="#b8664f"/><rect x="8" y="138" width="40" height="16" fill="#a95a45"/>${grid(4, 160, 7, 2, 12, 16, 6, 9, "#7d3e30")}<rect x="62" y="120" width="8" height="34" fill="#a95a45"/>
+      <rect x="196" y="112" width="186" height="90" fill="#f6f2ea"/><rect x="196" y="112" width="186" height="90" fill="url(#${p}cy)" opacity=".5"/>
+      ${kok(196, 3, 62, 112, "#f6f2ea", "#e2d8c4")}<path d="M250,112 a39,48 0 0 1 78,0 z" fill="#f9f6ef" stroke="#e2d8c4" stroke-width="1.4"/>
+      ${grid(216, 140, 3, 1, 62, 0, 12, 28, "#c9bfa9", true)}${grid(258, 136, 3, 1, 22, 0, 10, 34, "#c9bfa9", true)}<rect x="196" y="186" width="186" height="16" fill="#e8e0d0"/>
+      ${[204, 374].map(x => `<rect x="${x - 10}" y="86" width="20" height="30" fill="#f6f2ea"/><rect x="${x - 10}" y="86" width="20" height="30" fill="url(#${p}cy)"/>${grid(x - 4, 92, 1, 1, 0, 0, 8, 14, "#c9bfa9", true)}<path d="M${x - 11},88 C${x - 11},70 ${x + 11},70 ${x + 11},88 Z" fill="url(#${p}g)"/>${cross(x, 72, 3.6)}`).join("")}
+      <rect x="262" y="66" width="54" height="40" fill="#f6f2ea"/><rect x="262" y="66" width="54" height="40" fill="url(#${p}cy)"/>${grid(268, 74, 5, 1, 9.6, 0, 5, 22, "#c9bfa9", true)}<rect x="258" y="64" width="62" height="4" fill="#e2d8c4"/>
+      <path d="M260,66 C258,36 276,18 289,10 C302,18 320,36 318,66 Z" fill="url(#${p}g)"/>${[270, 280, 298, 308].map(x => `<path d="M${x},66 Q${f1(x + (289 - x) * .3)},30 289,10" fill="none" stroke="rgba(150,100,20,.45)" stroke-width="1"/>`).join("")}
+      ${onion(p, 289, 12, 9, 10, `url(#${p}g)`)}${cross(289, 1, 5)}` +
+     water(p, 202, "rgba(255,226,200,.45)") +
+     `${[[-6, 136], [136, 270], [270, 410]].map(([a, b]) => `<path d="M${a},202 Q${(a + b) / 2},256 ${b},202" fill="none" stroke="#56635f" stroke-width="7"/>${Array.from({length:7}, (_, i) => { const t = (i + 1) / 8, x = a + (b - a) * t, y = 202 + 108 * t * (1 - t) * .5; return `<line x1="${f1(x)}" y1="204" x2="${f1(x)}" y2="${f1(y + 2)}" stroke="#56635f" stroke-width="2"/>`; }).join("")}`).join("")}
+      <rect x="0" y="192" width="400" height="12" fill="#6c7a76"/><rect x="0" y="178" width="400" height="3" fill="#2f3634"/>${Array.from({length:50}, (_, i) => `<path d="M${i * 8 + 1},192 v-11 m3,0 v11" stroke="#2f3634" stroke-width="1"/>`).join("")}
+      ${[54, 200, 346].map(x => `<rect x="${x - 3}" y="122" width="6" height="70" fill="#262c2b"/><rect x="${x - 6}" y="184" width="12" height="8" fill="#262c2b"/>
+        <path d="M${x},140 C${x - 8},132 ${x - 20},136 ${x - 22},126 M${x},140 C${x + 8},132 ${x + 20},136 ${x + 22},126 M${x},132 C${x - 6},124 ${x - 12},122 ${x - 12},114 M${x},132 C${x + 6},124 ${x + 12},122 ${x + 12},114" fill="none" stroke="#262c2b" stroke-width="2.2"/>
+        ${[[x - 22, 122], [x + 22, 122], [x - 12, 110], [x + 12, 110], [x, 108]].map(([lx, ly]) => `<circle cx="${lx}" cy="${ly}" r="5.6" fill="#fff4cc" stroke="#262c2b" stroke-width="1.6"/><circle cx="${lx}" cy="${ly}" r="10" fill="#ffe8a0" opacity=".25"/>`).join("")}`).join("")}
+      ${person(126, 192, 1.25, "#b8323a")}${person(131, 192, 1.3, "#2a2a34")}`; }},
+  {id:"kotel", name:"Высотка на Котельнической набережной", focus:[160, 2, 80],
    opts:["Высотка на Котельнической набережной", "Гостиница «Украина»", "Здание МИД на Смоленской", "Главное здание МГУ"],
    fact:"Одна из семи сталинских высоток. Её достроили в 1952 году там, где Яуза впадает в Москву-реку. В романе есть глава «Крыша на Котельнической».",
-   svg:() => sky("k1", "#c8a3c8", "#f2c9b0", "#f6dcc4") +
-     `<rect x="60" y="160" width="100" height="84" fill="#d9c8a8"/><rect x="240" y="160" width="100" height="84" fill="#d9c8a8"/>
-      ${[70, 330].map(x => `<rect x="${x - 10}" y="132" width="20" height="30" fill="#e4d5b8"/><path d="M${x - 10},132 L${x},104 L${x + 10},132 Z" fill="#cdb893"/><line x1="${x}" y1="104" x2="${x}" y2="88" stroke="#e3b84e" stroke-width="2"/>`).join("")}
-      <rect x="156" y="118" width="88" height="126" fill="#e4d5b8"/><rect x="168" y="88" width="64" height="32" fill="#e9dcc2"/><rect x="180" y="66" width="40" height="24" fill="#eee2ca"/><rect x="189" y="50" width="22" height="18" fill="#f2e8d4"/>
-      ${[[168, 88, 64], [180, 66, 40], [189, 50, 22], [156, 118, 88]].map(([x, y, w]) => `<rect x="${x - 2}" y="${y}" width="${w + 4}" height="3" fill="#bfa880"/>${[x, x + w - 6].map(px => `<rect x="${px}" y="${y - 8}" width="6" height="8" fill="#e9dcc2"/><path d="M${px},${y - 8} L${px + 3},${y - 14} L${px + 6},${y - 8} Z" fill="#cdb893"/>`).join("")}`).join("")}
-      <path d="M196,50 L200,12 L204,50 Z" fill="#e3b84e"/>${star(200, 10, 6, "#c8202a", "#e3b84e")}
-      ${windows(164, 126, 10, 9, 8, 13, 4, 7, "#8a7a63")}${windows(66, 168, 12, 6, 8, 12, 4, 6, "#8a7a63")}${windows(246, 168, 12, 6, 8, 12, 4, 6, "#8a7a63")}${windows(174, 96, 7, 2, 8, 12, 4, 6, "#8a7a63")}` +
-     water(244, "#7b8fb0", "rgba(255,220,200,.4)")},
-  {id:"pashkov", name:"Дом Пашкова", focus:[166, 58, 68],
+   svg:() => { const p = "ko"; const tierT = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#e6d8bd"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${p}cy)"/><rect x="${x - 2}" y="${y}" width="${w + 4}" height="3" fill="#c7b089"/>${[x, x + w - 6].map(px => `<rect x="${px}" y="${y - 10}" width="6" height="10" fill="#efe3cb"/><path d="M${px - 1},${y - 10} L${px + 3},${y - 18} L${px + 7},${y - 10} Z" fill="#c7b089"/><line x1="${px + 3}" y1="${y - 18}" x2="${px + 3}" y2="${y - 24}" stroke="#e8c060" stroke-width="1.2"/>`).join("")}`;
+     return defs(p, sky(p, ["#b796c4", "#eab9a8", "#f6d8bc"]) + waterD(p, 0, "#8e97b8", "#57638e")) + bg(p) +
+     `${[[40, 176, 70, 70], [290, 176, 70, 70]].map(([x, y, w, h]) => tierT(x, y, w, h) + grid(x + 6, y + 8, 7, 5, 9, 12, 4, 7, "#8a7656")).join("")}
+      ${[[64, 158, 22, 18], [314, 158, 22, 18]].map(([x, y, w, h]) => tierT(x, y, w, h)).join("")}
+      ${tierT(110, 140, 180, 106)}${grid(116, 150, 19, 7, 9.2, 13, 4.4, 7.5, "#8a7656")}
+      ${tierT(146, 110, 108, 32)}${grid(152, 118, 11, 2, 9, 12, 4.4, 7, "#8a7656")}
+      ${tierT(162, 84, 76, 28)}${grid(168, 90, 8, 2, 8.6, 11, 4, 6.5, "#8a7656")}
+      ${tierT(174, 62, 52, 24)}${grid(180, 68, 6, 1, 8, 0, 4, 9, "#8a7656")}
+      ${tierT(186, 44, 28, 20)}${grid(190, 50, 4, 1, 6, 0, 3, 8, "#6a5a40", true)}
+      <path d="M193,44 L200,8 L207,44 Z" fill="url(#${p}g)"/><rect x="198.8" y="2" width="2.4" height="8" fill="#e8c060"/>${star(200, 3, 6, "#d81f2b", "#e8c060")}
+      <rect x="0" y="244" width="400" height="10" fill="#9c9488"/><rect x="0" y="244" width="400" height="3" fill="#bfb7aa"/>` + water(p, 254, "rgba(255,220,200,.45)"); }},
+  {id:"pashkov", name:"Дом Пашкова", focus:[160, 34, 80],
    opts:["Дом Пашкова", "Большой театр", "Усадьба Кусково", "Царицыно"],
-   fact:"Дворец конца XVIII века стоит на холме напротив Кремля. Сегодня это часть Российской государственной библиотеки. В романе есть глава «Бельведер», а с этого бельведера на крыше виден Кремль.",
-   svg:() => sky("h1", "#a9cdea", "#eef2f2") +
-     `<path d="M0,240 Q200,196 400,240 L400,300 L0,300 Z" fill="#7aa36a"/><path d="M0,262 Q200,232 400,262 L400,300 L0,300 Z" fill="#5f8a55"/>
-      <rect x="88" y="168" width="64" height="54" fill="#f4f1ea"/><rect x="248" y="168" width="64" height="54" fill="#f4f1ea"/>
-      ${[[70, 160], [330, 160]].map(([x, y]) => `<rect x="${x - 20}" y="${y}" width="40" height="62" fill="#f8f6f0"/><path d="M${x - 22},${y} L${x},${y - 14} L${x + 22},${y} Z" fill="#ece8de"/>${[x - 12, x - 4, x + 4, x + 12].map(c => `<rect x="${c - 1.5}" y="${y + 4}" width="3" height="50" fill="#e0dbcf"/>`).join("")}`).join("")}
-      <rect x="148" y="128" width="104" height="94" fill="#f8f6f0"/><path d="M146,140 L200,112 L254,140 Z" fill="#ece8de"/><path d="M146,140 L254,140" stroke="#d6d0c2" stroke-width="2"/>
-      ${[164, 186, 214, 236].map(c => `<rect x="${c - 3}" y="142" width="6" height="74" fill="#e4dfd3"/>`).join("")}
-      ${windows(96, 178, 4, 2, 14, 20, 7, 12, "#8aa0b4")}${windows(256, 178, 4, 2, 14, 20, 7, 12, "#8aa0b4")}
-      <rect x="178" y="88" width="44" height="26" fill="#f8f6f0"/>${[182, 190, 198, 206, 214].map(c => `<rect x="${c}" y="90" width="3" height="22" fill="#dcd6c8"/>`).join("")}
-      <rect x="176" y="86" width="48" height="4" fill="#e0dbcf"/><path d="M178,86 Q200,58 222,86 Z" fill="#cfd8dc"/><line x1="200" y1="66" x2="200" y2="56" stroke="#9aa6aa" stroke-width="2"/>
-      <rect x="0" y="262" width="400" height="4" fill="#e8e2d4"/>${Array.from({length:30}, (_, i) => `<rect x="${i * 14}" y="252" width="2.5" height="14" fill="#e8e2d4"/>`).join("")}`},
-  {id:"sukhareva", name:"Сухарева башня", focus:[160, 24, 80],
+   fact:"Дворец конца XVIII века стоит на холме напротив Кремля. Сегодня это часть Российской государственной библиотеки. В романе есть глава «Бельведер»: с бельведера на крыше виден Кремль.",
+   svg:() => { const p = "pk"; const cols = (x0, n, dx, y, h, w) => Array.from({length:n}, (_, i) => `<rect x="${f1(x0 + i * dx)}" y="${y}" width="${w}" height="${h}" fill="#fbfaf6"/><rect x="${f1(x0 + i * dx + w * .6)}" y="${y}" width="${f1(w * .4)}" height="${h}" fill="#dedad0"/>`).join("");
+     const urn = (x, y) => `<path d="M${x - 2.5},${y} h5 l-1,-3 a3,3 0 1 0 -3,0 z" fill="#ece8de"/>`;
+     return defs(p, sky(p, ["#9cc8ec", "#dbeaf3", "#f4f1ea"])) + bg(p) +
+     `<path d="M0,226 Q200,186 400,226 L400,300 L0,300 Z" fill="#7aa86a"/><path d="M0,252 Q200,226 400,252 L400,300 L0,300 Z" fill="#5f8f55"/>
+      ${[[30, 214, 14], [370, 214, 14], [12, 230, 12], [388, 230, 12]].map(([x, y, r]) => tree(x, y, r, "#4f7f45", "#6a9a58")).join("")}
+      ${[[60, 158], [340, 158]].map(([x, y]) => `<rect x="${x - 26}" y="${y}" width="52" height="56" fill="#f8f6f0"/><rect x="${x - 26}" y="${y}" width="52" height="16" fill="#e8e4da"/>${cols(x - 20, 4, 12, y + 18, 38, 5)}<path d="M${x - 28},${y} L${x},${y - 14} L${x + 28},${y} Z" fill="#f2efe6" stroke="#dcd6c8"/>`).join("")}
+      <rect x="86" y="170" width="78" height="44" fill="#f4f1ea"/><rect x="236" y="170" width="78" height="44" fill="#f4f1ea"/>${grid(92, 178, 6, 2, 12.4, 18, 6, 11, "#9fb2c2")}${grid(242, 178, 6, 2, 12.4, 18, 6, 11, "#9fb2c2")}
+      <rect x="140" y="168" width="120" height="48" fill="#d9d4c8"/>${Array.from({length:6}, (_, i) => `<line x1="140" y1="${174 + i * 7}" x2="260" y2="${174 + i * 7}" stroke="#c4bdae"/>`).join("")}${grid(150, 182, 6, 1, 18.6, 0, 9, 24, "#7d8a92", true)}
+      <rect x="140" y="112" width="120" height="58" fill="#f8f6f0"/>${cols(156, 4, 25, 118, 50, 7)}<rect x="136" y="110" width="128" height="6" fill="#e8e4da"/>
+      ${grid(144, 124, 1, 2, 0, 22, 7, 14, "#9fb2c2")}${grid(249, 124, 1, 2, 0, 22, 7, 14, "#9fb2c2")}
+      <rect x="138" y="100" width="124" height="12" fill="#f2efe6"/>${Array.from({length:15}, (_, i) => `<rect x="${140 + i * 8.2}" y="102" width="3" height="8" fill="#ddd7c9"/>`).join("")}${[142, 158, 242, 258].map(x => `<rect x="${x - 2}" y="88" width="4" height="12" fill="#e9e4d8"/><circle cx="${x}" cy="85" r="3" fill="#e9e4d8"/>`).join("")}
+      <rect x="168" y="62" width="64" height="40" fill="#f8f6f0"/>${cols(172, 8, 7.6, 66, 32, 3.4)}<rect x="164" y="60" width="72" height="5" fill="#e8e4da"/>
+      ${[166, 178, 190, 210, 222, 234].map(x => urn(x, 60)).join("")}
+      <path d="M172,60 C172,38 228,38 228,60 Z" fill="#c5d0d4"/><path d="M200,40 C214,41 226,48 228,60 L200,60 Z" fill="#a9b6bb"/>
+      <rect x="192" y="28" width="16" height="12" fill="#f8f6f0"/>${cols(193, 4, 4, 30, 9, 1.6)}<path d="M190,28 C190,20 210,20 210,28 Z" fill="#c5d0d4"/><line x1="200" y1="21" x2="200" y2="10" stroke="#8a9599" stroke-width="1.6"/>
+      <rect x="0" y="262" width="400" height="4" fill="#e9e3d4"/>${Array.from({length:40}, (_, i) => `<rect x="${i * 10}" y="250" width="2.2" height="14" fill="#e9e3d4"/>`).join("")}${[60, 200, 340].map(x => `<rect x="${x - 4}" y="244" width="8" height="22" fill="#ddd6c6"/>`).join("")}`; }},
+  {id:"sukhareva", name:"Сухарева башня", focus:[156, 6, 88],
    opts:["Сухарева башня", "Меншикова башня", "Боровицкая башня", "Северный речной вокзал"],
    fact:"Башню построили в конце XVII века при Петре I, в ней работала Школа математических и навигацких наук. В 1934 году её снесли, и увидеть её теперь можно только на старых картинках. В романе ей посвящена глава «Сухарева башня».",
-   svg:() => sky("u1", "#d9c9a6", "#efe3c8") +
-     `<rect y="262" width="400" height="38" fill="#b8a58a"/>
-      <rect x="80" y="186" width="240" height="76" fill="#b5463c"/><rect x="80" y="186" width="240" height="5" fill="#f2eadc"/>
-      ${[100, 132, 164, 236, 268, 300].map(x => `<path d="M${x - 10},262 v-34 a10,10 0 0 1 20,0 v34 z" fill="#f2eadc"/><path d="M${x - 7},262 v-32 a7,7 0 0 1 14,0 v32 z" fill="#6a2a24"/>`).join("")}
-      <path d="M176,262 L184,226 L216,226 L224,262 Z" fill="#e9dcc4"/>
-      <rect x="160" y="126" width="80" height="62" fill="#b84a40"/><rect x="160" y="126" width="80" height="4" fill="#f2eadc"/>${windows(168, 138, 4, 2, 18, 22, 10, 14, "#f2eadc")}${windows(170, 140, 4, 2, 18, 22, 6, 10, "#6a2a24")}
-      <rect x="172" y="88" width="56" height="40" fill="#bc5046"/><rect x="172" y="88" width="56" height="4" fill="#f2eadc"/>
-      <circle cx="200" cy="108" r="11" fill="#f4efe0" stroke="#3a2a20" stroke-width="1.5"/><line x1="200" y1="108" x2="200" y2="100" stroke="#3a2a20" stroke-width="1.6"/><line x1="200" y1="108" x2="205" y2="110" stroke="#3a2a20" stroke-width="1.6"/>
-      <rect x="182" y="66" width="36" height="24" fill="#c0564b"/><rect x="182" y="66" width="36" height="3" fill="#f2eadc"/>
-      <path d="M184,68 L200,26 L216,68 Z" fill="#3f6b4f"/><g fill="#d9a83a"><path d="M200,26 l-7,-6 l4,-1 l3,-5 l3,5 l4,1 z"/><circle cx="200" cy="15" r="2.4"/></g>`},
-  {id:"luzhkov", name:"Лужков мост и «деревья любви»", focus:[96, 116, 72],
+   svg:() => { const p = "su"; const wnd = (x, y, w, h) => `<path d="M${x - 3},${y + h + 3} v-${h + 2} l${w / 2 + 3},-6 l${w / 2 + 3},6 v${h + 2} z" fill="#f2e9d6"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#5e2a22"/>`;
+     return defs(p, sky(p, ["#cdb994", "#e8dcc0", "#f2e8d2"]) + `<radialGradient id="${p}vg" cx=".5" cy=".5" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3a2a10" stop-opacity=".35"/></radialGradient>`) + bg(p) +
+     `<rect y="262" width="400" height="38" fill="#b9a688"/>${Array.from({length:6}, (_, i) => `<line x1="0" y1="${268 + i * 6}" x2="400" y2="${268 + i * 6}" stroke="rgba(80,60,30,.12)"/>`).join("")}
+      <rect x="54" y="190" width="292" height="72" fill="#b4473c"/><rect x="54" y="190" width="292" height="72" fill="url(#${p}cy)" opacity=".4"/><rect x="50" y="186" width="300" height="6" fill="#f2e9d6"/>
+      ${[72, 104, 136, 264, 296, 328].map(x => `<path d="M${x - 12},262 v-30 a12,12 0 0 1 24,0 v30 z" fill="#f2e9d6"/><path d="M${x - 9},262 v-28 a9,9 0 0 1 18,0 v28 z" fill="#5e2a22"/>`).join("")}
+      ${grid(64, 198, 9, 1, 32.5, 0, 10, 14, "#5e2a22")}
+      <path d="M150,262 L170,214 L230,214 L250,262 Z" fill="#ece0c8"/>${Array.from({length:8}, (_, i) => `<line x1="${152 + i * 2.6}" y1="${258 - i * 6}" x2="${248 - i * 2.6}" y2="${258 - i * 6}" stroke="#c9b898"/>`).join("")}
+      <rect x="150" y="124" width="100" height="64" fill="#b84c41"/><rect x="150" y="124" width="100" height="64" fill="url(#${p}cy)"/><rect x="146" y="120" width="108" height="6" fill="#f2e9d6"/>${wnd(160, 140, 12, 22)}${wnd(194, 140, 12, 22)}${wnd(228, 140, 12, 22)}
+      ${[152, 248].map(x => `<rect x="${x - 4}" y="106" width="8" height="16" fill="#f2e9d6"/><path d="M${x - 5},106 L${x},94 L${x + 5},106 Z" fill="#3f6b4f"/>`).join("")}
+      <rect x="164" y="84" width="72" height="38" fill="#bc5247"/><rect x="164" y="84" width="72" height="38" fill="url(#${p}cy)"/><rect x="160" y="80" width="80" height="5" fill="#f2e9d6"/>
+      <circle cx="200" cy="103" r="13" fill="#f4efe0" stroke="#3a2a20" stroke-width="1.8"/>${Array.from({length:12}, (_, i) => { const a = i * Math.PI / 6; return `<circle cx="${f1(200 + Math.cos(a) * 10)}" cy="${f1(103 + Math.sin(a) * 10)}" r=".9" fill="#3a2a20"/>`; }).join("")}<line x1="200" y1="103" x2="200" y2="95" stroke="#3a2a20" stroke-width="1.8"/><line x1="200" y1="103" x2="206" y2="106" stroke="#3a2a20" stroke-width="1.8"/>
+      <path d="M176,80 L184,60 L216,60 L224,80 Z" fill="#c0564b"/>${grid(186, 64, 3, 1, 10, 0, 6, 12, "#5e2a22", true)}<rect x="182" y="58" width="36" height="4" fill="#f2e9d6"/>
+      <path d="M184,60 L200,16 L216,60 Z" fill="#3f6b4f"/><path d="M200,16 L216,60 L200,60 Z" fill="#2f5640"/>
+      <g fill="#d9a83a"><rect x="199" y="8" width="2" height="10"/><path d="M200,6 l-9,-4 l3,-1 l-2,-3 l5,2 l3,-4 l3,4 l5,-2 l-2,3 l3,1 z"/></g>
+      <rect width="400" height="300" fill="url(#${p}vg)"/>`; }},
+  {id:"luzhkov", name:"Лужков мост и «деревья любви»", focus:[96, 92, 80],
    opts:["Лужков мост и «деревья любви»", "Патриарший мост", "Пушкинский мост", "Андреевский мост"],
    fact:"Пешеходный мост через Водоотводный канал. Молодожёны вешают замки на его металлические «деревья любви». В романе есть главы «Замок на Лужковом мосту» и «Открытый замок».",
-   svg:() => { const cols = ["#d8433a", "#e3b84e", "#3f7fbf", "#4caf6a", "#e07ab0", "#f08a2a", "#9a6ad6", "#c0c4c8"]; let locks = "";
-     const tree = (x, s) => { let t = `<g stroke="#2b2b30" stroke-linecap="round" fill="none"><path d="M${x},226 L${x},${226 - 100 * s}" stroke-width="${6 * s}"/>`;
-       const br = [[-1, .55, .9], [1, .62, .85], [-1, .82, .7], [1, .9, .6], [0, 1, .5]];
-       for (const [d, h, l] of br) { const y = 226 - 100 * s * h, ex = x + d * 40 * s * l, ey = y - 24 * s * l; t += `<path d="M${x},${y} Q${(x + ex) / 2},${y - 4} ${ex},${ey}" stroke-width="${3 * s}"/>`;
-         for (let k = 0; k < 7; k++) { const u = (k + 1) / 8, lx = x + (ex - x) * u + (k % 2 ? 4 : -3), ly = y + (ey - y) * u + (k % 3) * 3 + 2; locks += `<g><path d="M${lx - 2.6},${ly} v-3 a2.6,2.6 0 0 1 5.2,0 v3" fill="none" stroke="#777" stroke-width="1.2"/><rect x="${lx - 4}" y="${ly}" width="8" height="7" rx="1.6" fill="${cols[(k + x) % cols.length]}"/></g>`; } }
+   svg:() => { const p = "lu"; const cl = ["#d8433a", "#f0c446", "#3f7fbf", "#4caf6a", "#e07ab0", "#f08a2a", "#9a6ad6", "#c9ccd0", "#e8e0d0"]; let locks = "";
+     const tr = (x, s) => { let t = `<g stroke="#2a2522" stroke-linecap="round" fill="none"><path d="M${x},212 C${x - 2},180 ${x + 2},160 ${x},${f1(212 - 96 * s)}" stroke-width="${f1(7 * s)}"/>`; let k = 0;
+       for (const [a, h, l] of [[-.9, .45, 1], [.9, .5, 1], [-.6, .72, .85], [.65, .78, .8], [-.25, .95, .6], [.3, .98, .6], [0, 1.05, .4]]) {
+         const y = 212 - 96 * s * h, ex = x + Math.sin(a) * 52 * s * l, ey = y - Math.cos(a) * 34 * s * l;
+         t += `<path d="M${x},${f1(y)} Q${f1(x + (ex - x) * .5)},${f1(y - 10 * s)} ${f1(ex)},${f1(ey)}" stroke-width="${f1(3.4 * s)}"/>`;
+         for (let q = 0; q < 9; q++) { const u = (q + 1) / 10, lx = f1(x + (ex - x) * u + ((q * 7 + k) % 5 - 2) * 1.6), ly = f1(y + (ey - y) * u - 10 * s * 2 * u * (1 - u) + 3 + (q % 3) * 2.4); k++;
+           locks += `<path d="M${f1(lx - 2.4)},${ly} v-2.6 a2.4,2.4 0 0 1 4.8,0 v2.6" fill="none" stroke="#8a8d92" stroke-width="1.1"/><rect x="${f1(lx - 3.6)}" y="${ly}" width="7.2" height="6.2" rx="1.6" fill="${cl[(k * 5 + x) % cl.length]}"/>`; } }
        return t + "</g>"; };
-     return sky("l1", "#9ec3e4", "#f0e6d8") +
-       `<rect x="0" y="150" width="70" height="80" fill="#e8d8b8"/><rect x="330" y="140" width="70" height="90" fill="#e8c8b0"/>${onion(370, 140, 20, 24, "#3f6b4f")}${cross(370, 116, 4)}${windows(8, 162, 4, 3, 16, 20, 8, 10, "#8aa0b4")}` +
-       water(236, "#6f8cab", "rgba(255,255,255,.35)") +
-       `<rect x="0" y="222" width="400" height="14" fill="#7a7d80"/><rect x="0" y="210" width="400" height="3" fill="#3a3c40"/>${Array.from({length:40}, (_, i) => `<rect x="${i * 10}" y="210" width="2" height="12" fill="#3a3c40"/>`).join("")}` +
-       tree(120, 1.1) + tree(280, .95) + tree(200, .7) + locks; }},
-  {id:"city", name:"Москва-Сити", focus:[108, 86, 68],
+     return defs(p, sky(p, ["#94c0e6", "#d4e6f2", "#f2e8da"]) + waterD(p, 0, "#7f9cbc", "#4c6b8c")) + bg(p) +
+     `<g opacity=".85">${kwall(150, 300, 150, 7, "#b5584c", "#93463c")}<rect x="196" y="118" width="18" height="34" fill="#b5584c"/><path d="M194,120 L205,92 L216,120 Z" fill="#3e6b50"/>${onion(p, 250, 132, 12, 14, `url(#${p}g)`)}${onion(p, 266, 126, 16, 20, `url(#${p}g)`)}<rect x="242" y="130" width="34" height="20" fill="#efe9dc"/></g>
+      <rect x="0" y="134" width="120" height="60" fill="#e6d4b4"/><rect x="0" y="130" width="120" height="5" fill="#c9b48e"/>${grid(8, 142, 7, 3, 16, 16, 7, 10, "#8aa0b4")}<rect x="300" y="128" width="100" height="66" fill="#d9b8a4"/><rect x="300" y="124" width="100" height="5" fill="#b9947c"/>${grid(308, 136, 6, 3, 16, 18, 7, 11, "#8aa0b4")}` +
+     water(p, 194, "rgba(255,255,255,.35)") +
+     `<rect x="0" y="212" width="400" height="16" fill="#8f9295"/><rect x="0" y="198" width="400" height="3" fill="#33363a"/>${Array.from({length:50}, (_, i) => `<rect x="${i * 8}" y="198" width="1.6" height="14" fill="#33363a"/>`).join("")}<rect x="0" y="228" width="400" height="72" fill="url(#${p}w)"/>` +
+     tr(118, 1.12) + tr(286, 1.02) + locks +
+     `<g transform="translate(196,212)"><path d="M-10,0 L-4,-26 L4,-26 L12,0 Z" fill="#fbfbf8"/><circle cx="0" cy="-30" r="4.4" fill="#e9c9ae"/><path d="M-4.6,-31 C-6,-38 6,-38 4.6,-31 C4,-34 -4,-34 -4.6,-31 Z" fill="#6a4a30"/><path d="M-5,-33 C-12,-30 -14,-14 -12,-4 L-8,-20 Z" fill="rgba(255,255,255,.75)"/>
+        <rect x="11" y="-27" width="9" height="27" fill="#1f2228"/><circle cx="15.5" cy="-31" r="4.2" fill="#e3bfa2"/><path d="M11,-34 h9 v-2 h-9 z" fill="#2a2018"/><path d="M11,-24 L2,-38" stroke="#1f2228" stroke-width="3" stroke-linecap="round"/><rect x="-1" y="-42" width="6" height="5" rx="1.4" fill="#e3b84e"/></g>`; }},
+  {id:"city", name:"Москва-Сити", focus:[96, 64, 76],
    opts:["Москва-Сити", "Новый Арбат", "Ленинский проспект", "Остров Мечты"],
    fact:"Деловой квартал на Пресненской набережной. Башня «Эволюция» закручена спиралью, а к Сити через реку ведёт крытый мост «Багратион». Сити мелькает и в романе.",
-   svg:() => sky("c1", "#5f9ad6", "#bcd8ef", "#e6eef4") +
-     `<defs><linearGradient id="c2" x1="0" x2="1"><stop offset="0" stop-color="#7fb0d8"/><stop offset=".5" stop-color="#c6e0f2"/><stop offset="1" stop-color="#5d8fbd"/></linearGradient>
-      <linearGradient id="c3" x1="0" x2="1"><stop offset="0" stop-color="#b8894a"/><stop offset=".5" stop-color="#e8c890"/><stop offset="1" stop-color="#a87a40"/></linearGradient></defs>
-      <rect x="40" y="120" width="40" height="120" fill="#6d8fb0"/><rect x="300" y="110" width="44" height="130" fill="#7fa2c4"/><rect x="340" y="140" width="36" height="100" fill="#5d7f9f"/>
-      ${Array.from({length:14}, (_, i) => `<path d="M${118 + (i % 2) * 6},${236 - i * 11} h${34} l${i % 2 ? -6 : 6},-11 h-34 z" fill="${i % 2 ? "#9fc6e6" : "#6f9fca"}"/>`).join("")}
-      <path d="M210,240 V44 L232,30 L232,240 Z" fill="url(#c2)"/><path d="M232,240 V30 L250,46 V240 Z" fill="#5d8fbd"/><line x1="232" y1="30" x2="232" y2="4" stroke="#cfd8e0" stroke-width="2"/>
-      <rect x="182" y="96" width="26" height="144" fill="url(#c2)"/><rect x="262" y="70" width="32" height="170" fill="url(#c3)"/>
-      ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => `<line x1="182" y1="${100 + i * 11}" x2="208" y2="${100 + i * 11}" stroke="rgba(255,255,255,.35)"/><line x1="262" y1="${76 + i * 13}" x2="294" y2="${76 + i * 13}" stroke="rgba(255,255,255,.3)"/>`).join("")}` +
-     water(240, "#5f7f9f", "rgba(255,255,255,.4)") +
-     `<rect x="0" y="230" width="400" height="12" fill="#c9d3dc"/><path d="M60,232 Q200,206 340,232 Z" fill="rgba(190,225,245,.75)" stroke="#9fb6c8"/><rect x="0" y="242" width="400" height="4" fill="#8a9aa8"/>`},
-  {id:"mgu", name:"Главное здание МГУ", focus:[178, 4, 44],
+   svg:() => { const p = "ci"; let evo = ""; for (let i = 0; i < 18; i++) { const y = 230 - i * 9, o = Math.sin(i * .55) * 9; evo += `<path d="M${f1(104 + o)},${y} h40 l${f1(Math.sin((i + 1) * .55) * 9 - o)},-9 h-40 z" fill="${i % 2 ? "#a9cdea" : "#7fa9d0"}"/><path d="M${f1(104 + o)},${y} h40" stroke="rgba(255,255,255,.55)" stroke-width="1"/>`; }
+     return defs(p, sky(p, ["#4f8fd4", "#a9cdee", "#e4eef5"]) + waterD(p, 0, "#6d8db0", "#3e5f84") + `
+      <linearGradient id="${p}gl" x1="0" x2="1"><stop offset="0" stop-color="#7fb0d8"/><stop offset=".45" stop-color="#d4ebf8"/><stop offset="1" stop-color="#4f80b0"/></linearGradient>
+      <linearGradient id="${p}br" x1="0" x2="1"><stop offset="0" stop-color="#9a6a32"/><stop offset=".45" stop-color="#e9c892"/><stop offset="1" stop-color="#8a5a28"/></linearGradient>
+      <linearGradient id="${p}dk" x1="0" x2="1"><stop offset="0" stop-color="#2a3646"/><stop offset=".5" stop-color="#58708a"/><stop offset="1" stop-color="#202a38"/></linearGradient>`) + bg(p) +
+     `<rect x="20" y="128" width="40" height="104" fill="#7894b2"/><rect x="330" y="120" width="30" height="112" fill="url(#${p}dk)"/><rect x="362" y="138" width="30" height="94" fill="url(#${p}dk)"/>
+      <path d="M60,232 V112 Q80,98 100,112 V232 Z" fill="#8fb0cf"/>${grid(64, 120, 4, 9, 9, 12, 6, 1.4, "rgba(255,255,255,.45)")}
+      ${evo}<path d="M104,68 h40 l-4,-6 h-32 z" fill="#d4ebf8"/>
+      <path d="M196,232 V40 L222,22 V232 Z" fill="url(#${p}gl)"/><path d="M222,232 V22 L246,40 V232 Z" fill="#4f80b0"/><line x1="222" y1="22" x2="222" y2="0" stroke="#d0d8e0" stroke-width="2"/>
+      <path d="M168,232 V92 L184,80 V232 Z" fill="url(#${p}gl)"/><path d="M184,232 V80 L196,92 V232 Z" fill="#4f80b0"/>
+      <path d="M258,232 V74 h12 v-8 h10 v-8 h10 v174 Z" fill="url(#${p}br)"/>${Array.from({length:14}, (_, i) => `<line x1="258" y1="${84 + i * 11}" x2="290" y2="${84 + i * 11}" stroke="rgba(90,50,10,.25)"/>`).join("")}
+      <rect x="296" y="96" width="28" height="136" fill="url(#${p}dk)"/>${Array.from({length:22}, (_, i) => `<line x1="296" y1="${100 + i * 6}" x2="324" y2="${100 + i * 6}" stroke="rgba(255,255,255,.12)"/>`).join("")}` +
+     water(p, 240, "rgba(255,255,255,.4)") +
+     `<rect x="0" y="232" width="400" height="10" fill="#c9d2da"/><path d="M40,236 Q200,208 360,236 Z" fill="rgba(190,226,246,.8)" stroke="#9fb6c8" stroke-width="1.4"/>${Array.from({length:15}, (_, i) => { const x = 60 + i * 20, y = 236 - 28 * 4 * ((x - 40) / 320) * (1 - (x - 40) / 320); return `<line x1="${x}" y1="236" x2="${x}" y2="${f1(y)}" stroke="#9fb6c8" stroke-width="1"/>`; }).join("")}
+      <rect x="0" y="242" width="400" height="4" fill="#7b8a98"/>
+      <g opacity=".35" transform="translate(0,486) scale(1,-1)"><rect x="196" y="244" width="50" height="40" fill="#bcd8ee"/><rect x="258" y="244" width="32" height="30" fill="#e2c08a"/></g>`; }},
+  {id:"mgu", name:"Главное здание МГУ", focus:[172, 0, 56],
    opts:["Главное здание МГУ", "Высотка на Котельнической набережной", "Гостиница «Ленинградская»", "Дом на Кудринской площади"],
    fact:"Главное здание МГУ на Воробьёвых горах достроили в 1953 году. Это самая высокая из семи сталинских высоток.",
-   svg:() => sky("m1", "#7fb4e2", "#e4eef6") +
-     `<rect y="250" width="400" height="50" fill="#6f9a5c"/>${Array.from({length:16}, (_, i) => `<circle cx="${i * 26 + 8}" cy="${252 - (i % 3) * 3}" r="${12 + (i % 2) * 4}" fill="${i % 2 ? "#4f7f45" : "#5f8f50"}"/>`).join("")}
-      <rect x="40" y="170" width="120" height="76" fill="#e6dccb"/><rect x="240" y="170" width="120" height="76" fill="#e6dccb"/>
-      ${[86, 314].map(x => `<rect x="${x - 14}" y="128" width="28" height="44" fill="#ede4d4"/><path d="M${x - 14},128 L${x},104 L${x + 14},128 Z" fill="#d8ccb6"/><line x1="${x}" y1="104" x2="${x}" y2="84" stroke="#e3b84e" stroke-width="2.4"/>${star(x, 82, 4, "#e3b84e")}`).join("")}
-      <rect x="160" y="104" width="80" height="142" fill="#ede4d4"/><rect x="172" y="80" width="56" height="26" fill="#f0e8da"/><rect x="184" y="62" width="32" height="20" fill="#f4ede0"/>
-      <circle cx="200" cy="140" r="11" fill="#f8f4ea" stroke="#b8a480" stroke-width="2"/><line x1="200" y1="140" x2="200" y2="132" stroke="#4a3a2a" stroke-width="1.6"/><line x1="200" y1="140" x2="206" y2="142" stroke="#4a3a2a" stroke-width="1.6"/>
-      ${windows(168, 162, 8, 6, 8, 13, 4, 7, "#9a8a70")}${windows(48, 180, 12, 5, 9, 12, 5, 6, "#9a8a70")}${windows(248, 180, 12, 5, 9, 12, 5, 6, "#9a8a70")}
-      <path d="M196,62 L200,36 L204,62 Z" fill="#e3b84e"/>
-      <circle cx="200" cy="24" r="12" fill="none" stroke="#e3b84e" stroke-width="3.4" stroke-dasharray="3 2"/>${star(200, 24, 8, "#e3b84e", "#b88a2a")}`},
-  {id:"ostankino", name:"Останкинская телебашня", focus:[166, 66, 68],
+   svg:() => { const p = "mg"; const blk = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ede3d0"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${p}cy)"/><rect x="${x - 2}" y="${y}" width="${w + 4}" height="3" fill="#c8b48e"/>`;
+     return defs(p, sky(p, ["#6aa6de", "#bcd9f0", "#eaf1f6"])) + bg(p) +
+     `${blk(14, 176, 120, 64)}${blk(266, 176, 120, 64)}${grid(20, 184, 13, 4, 9, 13, 4.4, 7, "#9a8a70")}${grid(272, 184, 13, 4, 9, 13, 4.4, 7, "#9a8a70")}
+      ${[[30, 150], [370, 150]].map(([x, y]) => blk(x - 12, y, 24, 28) + `<path d="M${x - 12},${y} L${x},${y - 26} L${x + 12},${y} Z" fill="#d8c8aa"/><line x1="${x}" y1="${y - 26}" x2="${x}" y2="${y - 44}" stroke="#e8c060" stroke-width="2"/>${star(x, y - 46, 4.4, "#e8c060")}`).join("")}
+      ${[[118, 128], [282, 128]].map(([x, y]) => blk(x - 16, y, 32, 50) + grid(x - 12, y + 8, 4, 3, 7, 13, 3.4, 7, "#9a8a70") + `<path d="M${x - 16},${y} L${x},${y - 30} L${x + 16},${y} Z" fill="#d8c8aa"/><line x1="${x}" y1="${y - 30}" x2="${x}" y2="${y - 52}" stroke="#e8c060" stroke-width="2.2"/>${star(x, y - 55, 5.4, "#e8c060")}${[x - 16, x + 12].map(sx => `<rect x="${sx}" y="${y - 10}" width="4" height="10" fill="#efe3cc"/>`).join("")}`).join("")}
+      ${blk(150, 110, 100, 132)}${grid(158, 156, 10, 6, 9, 13, 4.4, 7, "#9a8a70")}
+      <circle cx="200" cy="134" r="13" fill="#faf6ec" stroke="#b39a6a" stroke-width="2.4"/>${Array.from({length:12}, (_, i) => { const a = i * Math.PI / 6; return `<circle cx="${f1(200 + Math.cos(a) * 9.5)}" cy="${f1(134 + Math.sin(a) * 9.5)}" r="1" fill="#4a3a2a"/>`; }).join("")}<line x1="200" y1="134" x2="200" y2="126" stroke="#4a3a2a" stroke-width="1.8"/><line x1="200" y1="134" x2="206" y2="137" stroke="#4a3a2a" stroke-width="1.8"/>
+      ${[154, 242].map(x => `<rect x="${x - 2}" y="98" width="8" height="12" fill="#efe3cc"/><circle cx="${x + 2}" cy="95" r="3.4" fill="#d8c8aa"/>`).join("")}
+      ${blk(164, 84, 72, 28)}${grid(170, 90, 7, 1, 9.6, 0, 4.6, 16, "#8a7a60", true)}${blk(176, 64, 48, 22)}${grid(181, 68, 5, 1, 8.6, 0, 4, 14, "#8a7a60", true)}
+      <path d="M182,64 C182,52 218,52 218,64 Z" fill="#d8c8aa"/><path d="M194,58 L200,24 L206,58 Z" fill="url(#${p}g)"/>
+      <circle cx="200" cy="16" r="11.5" fill="none" stroke="#e8c060" stroke-width="3.6" stroke-dasharray="2.6 1.6"/>${star(200, 16, 8.4, `url(#${p}g)`, "#b48a2a")}
+      <rect y="240" width="400" height="60" fill="#6f9a5c"/><rect x="120" y="252" width="160" height="22" rx="11" fill="#9ec4e2"/><rect x="120" y="252" width="160" height="22" rx="11" fill="none" stroke="#e8e0d0" stroke-width="2"/>${[150, 200, 250].map(x => `<path d="M${x},264 q-4,-12 0,-16 q4,4 0,16" fill="#e6f2fb"/>`).join("")}
+      ${Array.from({length:10}, (_, i) => { const x = i < 5 ? 10 + i * 22 : 290 + (i - 5) * 24; return tree(x, 246 + (i % 2) * 4, 14, "#4f7f45", "#6a9a58"); }).join("")}`; }},
+  {id:"ostankino", name:"Останкинская телебашня", focus:[164, 52, 72],
    opts:["Останкинская телебашня", "Шуховская башня", "Башня «Федерация»", "Петербургская телебашня"],
-   fact:"Телебашня высотой 540 метров построена в 1967 году. Несколько лет она была самым высоким сооружением в мире. Под самой верхней «тарелкой» работает ресторан «Седьмое небо».",
-   svg:() => sky("o1", "#5d93d0", "#c6def0", "#eef3f6") +
-     `<rect y="262" width="400" height="38" fill="#6f9a5c"/>${Array.from({length:12}, (_, i) => `<circle cx="${i * 36 + 10}" cy="262" r="${14 + (i % 3) * 4}" fill="#5a8a4c"/>`).join("")}
-      <path d="M170,270 L186,224 L214,224 L230,270 Z" fill="#dcd8d2"/>${[176, 190, 204, 218].map(x => `<path d="M${x - 4},270 v-14 a5,5 0 0 1 10,0 v14 z" fill="#8a8782"/>`).join("")}
-      <path d="M187,226 L196,104 L204,104 L213,226 Z" fill="#e8e5df"/><path d="M200,226 L200,104 L204,104 L213,226 Z" fill="#cfcac2"/>
-      <rect x="194" y="150" width="12" height="4" fill="#bdb8af"/>
-      <ellipse cx="200" cy="104" rx="22" ry="6" fill="#d6d2ca"/><rect x="180" y="90" width="40" height="14" rx="4" fill="#3d4a5a"/>${windows(183, 93, 9, 1, 4, 0, 2.6, 8, "#ffe7a8")}<ellipse cx="200" cy="90" rx="22" ry="5" fill="#e8e5df"/>
-      <rect x="196" y="40" width="8" height="50" fill="#e8e5df"/>${[44, 54, 64, 74].map(y => `<rect x="196" y="${y}" width="8" height="5" fill="#d23a32"/>`).join("")}
-      <rect x="198.5" y="6" width="3" height="36" fill="#cfcac2"/>${[10, 18, 26, 34].map(y => `<rect x="198.5" y="${y}" width="3" height="4" fill="#d23a32"/>`).join("")}`},
-  {id:"bolshoi", name:"Большой театр", focus:[160, 52, 80],
+   fact:"Телебашня высотой 540 метров построена в 1967 году. Несколько лет она была самым высоким сооружением в мире. На высоте больше трёхсот метров работает ресторан «Седьмое небо».",
+   svg:() => { const p = "os"; return defs(p, sky(p, ["#4d86c8", "#a9cdec", "#eaf2f7"]) + `<linearGradient id="${p}c" x1="0" x2="1"><stop offset="0" stop-color="#f4f2ee"/><stop offset=".55" stop-color="#e4e0d8"/><stop offset="1" stop-color="#b9b3a8"/></linearGradient>`) + bg(p) +
+     `<rect y="262" width="400" height="38" fill="#6f9a5c"/>${Array.from({length:14}, (_, i) => tree(i * 31 + 6, 258 + (i % 2) * 5, 14 + (i % 3) * 3, "#4f7f45", "#6a9a58")).join("")}
+      <path d="M160,266 C170,250 180,232 188,214 L212,214 C220,232 230,250 240,266 Z" fill="url(#${p}c)"/>${[166, 180, 194, 208, 222].map((x, i) => `<path d="M${x + 2},266 v-14 a6,9 0 0 1 12,0 v14 z" fill="#8f8a82"/>`).join("")}
+      <path d="M188,216 L195,98 L205,98 L212,216 Z" fill="url(#${p}c)"/>${[200, 180, 160, 140, 120].map(y => { const hw = 5 + (y - 98) / 118 * 7; return `<rect x="${f1(200 - hw)}" y="${y}" width="${f1(hw * 2)}" height="2.2" fill="#c6c0b6"/>`; }).join("")}
+      <path d="M176,98 h48 l-4,-4 h-40 z" fill="#d8d4cc"/><rect x="178" y="74" width="44" height="20" rx="4" fill="#3b4656"/>${[78, 85].map(y => `<rect x="180" y="${y}" width="40" height="3.4" fill="#ffe7a8" opacity=".9"/>`).join("")}<path d="M174,74 h52 l-6,-5 h-40 z" fill="#ece9e3"/>
+      <rect x="194" y="60" width="12" height="10" fill="#3b4656"/><rect x="195" y="38" width="10" height="22" fill="url(#${p}c)"/>${[42, 52].map(y => `<rect x="195" y="${y}" width="10" height="5" fill="#d23a32"/>`).join("")}
+      <rect x="197.5" y="4" width="5" height="36" fill="#d9d4cb"/>${[6, 16, 26].map(y => `<rect x="197.5" y="${y}" width="5" height="5" fill="#d23a32"/>`).join("")}<circle cx="200" cy="3" r="2" fill="#ff5a4a"/>`; }},
+  {id:"bolshoi", name:"Большой театр", focus:[150, 30, 100],
    opts:["Большой театр", "Малый театр", "Дом Пашкова", "Пушкинский музей"],
    fact:"Над портиком — квадрига Аполлона работы Петра Клодта. Он же сделал коней Аничкова моста в Петербурге.",
-   svg:() => sky("t1", "#9cc4e6", "#f2e6d4") +
-     `<rect y="258" width="400" height="42" fill="#a9a29a"/>
-      <rect x="60" y="140" width="280" height="118" fill="#efdcae"/>${windows(72, 156, 4, 3, 14, 30, 8, 16, "#8a7a5a")}${windows(278, 156, 4, 3, 14, 30, 8, 16, "#8a7a5a")}
-      <rect x="116" y="150" width="168" height="108" fill="#f6eedb"/>${[124, 146, 168, 190, 210, 232, 254, 276].map(c => `<rect x="${c - 4}" y="152" width="8" height="98" fill="#fbf8ef"/><rect x="${c - 5.5}" y="150" width="11" height="4" fill="#e6dcc4"/>`).join("")}
-      <rect x="112" y="250" width="176" height="8" fill="#e6dcc4"/><rect x="110" y="140" width="180" height="10" fill="#fbf8ef"/>
-      <path d="M110,140 L200,104 L290,140 Z" fill="#fbf8ef"/><path d="M126,136 L200,110 L274,136 Z" fill="#efe6d0"/>
-      <g transform="translate(0,-4)">${horse(176, 96, .9, "#4a3a2a", true)}${horse(188, 94, .95, "#3e3024", true)}${horse(212, 94, .95, "#3e3024")}${horse(224, 96, .9, "#4a3a2a")}
-      <path d="M190,104 Q200,90 210,104 Z" fill="#3e3024"/><rect x="197" y="70" width="6" height="22" rx="3" fill="#3e3024"/><circle cx="200" cy="66" r="5" fill="#3e3024"/><path d="M203,74 L214,62" stroke="#3e3024" stroke-width="3" stroke-linecap="round"/></g>`}
+   svg:() => { const p = "bo"; return defs(p, sky(p, ["#8cbce4", "#d5e6f1", "#f3e7d5"]) + `<linearGradient id="${p}col" x1="0" x2="1"><stop offset="0" stop-color="#fffdf6"/><stop offset=".6" stop-color="#f1ead9"/><stop offset="1" stop-color="#d6ccb4"/></linearGradient>`) + bg(p) +
+     `<rect y="262" width="400" height="38" fill="#a9a29a"/>
+      <rect x="30" y="134" width="340" height="128" fill="#eed9a6"/><rect x="30" y="134" width="340" height="128" fill="url(#${p}cy)" opacity=".35"/><rect x="26" y="130" width="348" height="6" fill="#fbf6ea"/>
+      ${grid(40, 148, 4, 3, 16, 36, 8, 20, "#7b6a4c", true)}${grid(298, 148, 4, 3, 16, 36, 8, 20, "#7b6a4c", true)}
+      <rect x="104" y="144" width="192" height="118" fill="#e9dcc0"/>${grid(118, 220, 8, 1, 22.6, 0, 10, 30, "#6a5a40", true)}
+      ${Array.from({length:8}, (_, i) => { const x = 112 + i * 25.1; return `<rect x="${f1(x)}" y="150" width="11" height="102" fill="url(#${p}col)"/><rect x="${f1(x - 2)}" y="146" width="15" height="5" fill="#f6efe0"/><path d="M${f1(x - 2)},146 q3,-4 7.5,0 q4.5,-4 7.5,0" fill="none" stroke="#d6ccb4" stroke-width="1.4"/><rect x="${f1(x - 2)}" y="250" width="15" height="4" fill="#e6dcc6"/>`; }).join("")}
+      <rect x="98" y="134" width="204" height="12" fill="#fbf8ef"/><path d="M98,134 L200,98 L302,134 Z" fill="#fbf8ef"/><path d="M116,131 L200,103 L284,131 Z" fill="#efe6d0"/>
+      <g fill="#c8a24a" transform="translate(200,120)"><path d="M0,-10 l-3,4 h-8 l3,4 l-6,1 l5,3 h12 l5,-3 l-6,-1 l3,-4 h-8 z"/><circle cx="-5" cy="-11" r="2"/><circle cx="5" cy="-11" r="2"/></g>
+      <rect x="160" y="92" width="80" height="8" fill="#f1e8d4"/>
+      <g fill="#3a2e22">${horse(150, 52, .95, "#3a2e22", false)}${horse(166, 50, 1, "#463828", false)}${horse(250, 52, .95, "#3a2e22", true)}${horse(234, 50, 1, "#463828", true)}
+        <path d="M184,92 Q200,70 216,92 Z"/><rect x="196" y="52" width="8" height="26" rx="3"/><circle cx="200" cy="47" r="5"/><path d="M203,58 L215,40" stroke="#3a2e22" stroke-width="3.4" stroke-linecap="round"/><path d="M196,62 L186,54 M186,54 l-4,-6 l8,2 z" stroke="#3a2e22" stroke-width="2.6" stroke-linecap="round"/></g>
+      ${[60, 340].map(x => `<rect x="${x - 2}" y="226" width="4" height="36" fill="#2e2a26"/><circle cx="${x}" cy="222" r="6" fill="#fff4cc" stroke="#2e2a26" stroke-width="1.6"/>`).join("")}`; }}
 ];
 
 const CSS = `
