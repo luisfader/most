@@ -62,6 +62,21 @@ article hr::after{content:"⁂";color:var(--muted)}
 .gate .b18{display:inline-block;font:700 22px var(--sans);background:#b3261e;color:#fff;border-radius:10px;padding:8px 14px}
 .gate h1{font-family:var(--display);font-size:40px;margin:20px 0 8px}
 .gate p{color:var(--muted)}
+/* «Разделы романа»: заметная кнопка с иконками, тенью и мягким свечением; внутри — вкладки разделов */
+.ex{position:relative;margin:8px 0 28px;border:1.5px solid color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:20px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,var(--paper)),var(--paper) 62%);box-shadow:0 10px 28px color-mix(in srgb,var(--accent) 20%,transparent);overflow:hidden;animation:exGlow 3.4s ease-in-out infinite}
+@keyframes exGlow{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 14%,transparent),0 14px 38px color-mix(in srgb,var(--accent) 34%,transparent)}}
+.ex::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.45) 50%,transparent 65%);transform:translateX(-100%);animation:exShine 5.5s ease-in-out infinite}
+@keyframes exShine{0%,62%{transform:translateX(-100%)}82%,100%{transform:translateX(100%)}}
+.ex.on{animation:none}.ex.on::after{display:none}
+@media (prefers-reduced-motion:reduce){.ex,.ex::after{animation:none}.ex::after{display:none}}
+.ex-open{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:14px;padding:18px;cursor:pointer;position:relative;z-index:1;font-family:var(--sans)}
+.ex-ic{display:flex}.ex-ic i{font-style:normal;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:22px;color:#fff;background:linear-gradient(135deg,#3fb6a8,#2a6f9e);border:2.5px solid var(--paper);box-shadow:0 4px 12px rgba(0,0,0,.18);transition:transform .2s}
+.ex-open:hover .ex-ic i{transform:translateY(-2px) rotate(-6deg)}
+.ex-lbl{flex:1;display:flex;flex-direction:column;gap:2px}.ex-lbl b{font-size:17px;color:var(--accent)}.ex-lbl span{font-size:13px;color:var(--muted)}
+.ex-ch{font-size:22px;color:#fff;background:var(--accent);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none;transition:transform .2s}
+.ex.on .ex-ch{transform:rotate(180deg)}
+.ex-body{padding:0 16px 18px;position:relative;z-index:1}
+.ex-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}.ex-tabs button{font:600 13px var(--sans);border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer}.ex-tabs button[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:#fff}
 footer{text-align:center;font:13px var(--sans);color:var(--muted);padding:30px 16px;border-top:1px solid var(--line)}
 </style>
 </head>
@@ -77,6 +92,7 @@ footer{text-align:center;font:13px var(--sans);color:var(--muted);padding:30px 1
 <main id="app"><p style="text-align:center;padding:60px 0">…</p></main>
 <footer>© Роберт Фадер. Все права защищены.</footer>
 <script src="game.js?v=1"></script>
+<script src="places.js?v=1"></script>
 <script>
 const store = {
   get(k, d){ try { const v = localStorage.getItem("most:" + k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
@@ -141,9 +157,25 @@ function home(){
     <div class="by">${esc(book.author)} · ${esc(book.genre)} · ${esc(book.year)} <span class="pill">18+</span></div></section>
     <div class="desc">${book.description.split("\n").map(p => `<p>${esc(p)}</p>`).join("")}</div>
     <div class="btns">${last ? `<a class="btn" href="#/${last}">Продолжить</a>` : ""}<a class="btn${last ? " ghost" : ""}" href="#/1">${last ? "Начать сначала" : "Начать игру"}</a></div>
+    <section class="ex" id="ex"><button class="ex-open" type="button" aria-expanded="false" aria-controls="exBody"><span class="ex-ic"><i>🧭</i></span><span class="ex-lbl"><b>Разделы романа</b><span>Игра «Угадай место»</span></span><span class="ex-ch">⌄</span></button><div class="ex-body" id="exBody" hidden></div></section>
     <section class="panel" id="endings"><h2>Финалы</h2><p class="note">В конце каждого эпизода ты выбираешь, что делать дальше. Твои решения ведут к одному из финалов. Открытые финалы сохраняются в этом браузере.</p>${endingsHTML()}</section>`;
   window.scrollTo(0, 0);
+  sections();
   { const im = document.getElementById("coverImg"); im.onload = () => { im.hidden = false; const mk = document.querySelector(".hero .mark"); if (mk) mk.hidden = true; }; im.src = "cover.webp?v=2"; }
+}
+
+/* Разделы романа: пока один — «Угадай место» (places.js). Новые разделы добавляются в SECTIONS. */
+const SECTIONS = [{id:"places", label:"🧭 Угадай место", mount:el => window.MostPlaces && MostPlaces.mount(el, {store})}];
+function sections(){
+  const box = document.getElementById("ex"); if (!box) return;
+  const btn = box.querySelector(".ex-open"), body = box.querySelector(".ex-body");
+  const show = id => { const s = SECTIONS.find(x => x.id === id) || SECTIONS[0];
+    body.innerHTML = `<div class="ex-tabs" role="tablist">${SECTIONS.map(x => `<button type="button" role="tab" data-s="${x.id}" aria-selected="${x.id === s.id}">${x.label}</button>`).join("")}</div><div class="ex-pane"></div>`;
+    body.querySelectorAll("[data-s]").forEach(b => b.onclick = () => show(b.dataset.s));
+    s.mount(body.querySelector(".ex-pane")); };
+  const open = on => { box.classList.toggle("on", on); btn.setAttribute("aria-expanded", on); body.hidden = !on; store.set("exOpen", on); if (on && !body.firstChild) show(SECTIONS[0].id); };
+  btn.onclick = () => open(body.hidden);
+  if (store.get("exOpen", false)) open(true);
 }
 
 async function episode(i){
